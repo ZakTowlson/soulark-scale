@@ -206,7 +206,7 @@ td.r,th.r{text-align:right}
 .sunbtn.on{background:rgba(202,163,28,.2);border-color:var(--line2);color:var(--gold2)}
 .offrow{opacity:.55}
 .grip{cursor:grab;color:var(--dim);font-size:20px;line-height:1;padding:0 2px;user-select:none;flex:none}
-.row[data-nn]{cursor:grab}
+.nninput{width:100%;background:#0E1530;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-weight:600}
 .row.dragging{opacity:.4}
 .row.dropover{outline:1px dashed var(--gold);outline-offset:-1px;background:rgba(202,163,28,.07)}
 .mvs{display:flex;gap:4px}
@@ -684,17 +684,17 @@ function nnCard() {
   const t = today(), sun = isSunday(t);
   const active = S.nonneg.filter(n => nnApplies(n, t)), off = S.nonneg.filter(n => !nnApplies(n, t));
   const done = active.filter(n => isDone(n.id)).length, total = active.length, sk = nnStreak();
-  const row = (n, rest) => `<div class="row ${rest ? 'offrow' : ''}" ${nnReorder ? `draggable="true" data-nn="${n.id}"` : ''}>${nnReorder ? '<span class="grip" title="Drag to reorder">⠿</span>' : ''}${rest ? '<span class="tick off"></span>' : `<button class="tick ${isDone(n.id) ? 'done' : ''}" data-act="nnToggle" data-id="${n.id}" aria-label="Done">${TICK}</button>`}
-    <div class="grow ${isDone(n.id) && !rest ? 'done-t' : ''}"><b style="font-weight:600">${esc(n.title)}</b>${n.auto ? ` <span class="chip">${n.auto === 'dms' ? 'from DM count' : 'from Content'}</span>` : ''}</div>
+  const row = (n, rest) => `<div class="row ${rest ? 'offrow' : ''}" ${nnReorder ? `data-nn="${n.id}"` : ''}>${nnReorder ? '<span class="grip" draggable="true" title="Drag to reorder">⠿</span>' : ''}${rest ? '<span class="tick off"></span>' : `<button class="tick ${isDone(n.id) ? 'done' : ''}" data-act="nnToggle" data-id="${n.id}" aria-label="Done">${TICK}</button>`}
+    <div class="grow ${isDone(n.id) && !rest ? 'done-t' : ''}">${nnReorder ? `<input class="nninput" data-nn-title="${n.id}" value="${esc(n.title)}" aria-label="Rename">` : `<b style="font-weight:600">${esc(n.title)}</b>`}${n.auto ? ` <span class="chip">${n.auto === 'dms' ? 'from DM count' : 'from Content'}</span>` : ''}</div>
     ${nnReorder ? `<span class="mvs"><button class="mv" data-act="nnMove" data-id="${n.id}" data-dir="-1" aria-label="Move up">▲</button><button class="mv" data-act="nnMove" data-id="${n.id}" data-dir="1" aria-label="Move down">▼</button></span>` : ''}<button class="sunbtn ${n.sun ? 'on' : ''}" data-act="nnSun" data-id="${n.id}" title="Tap to ${n.sun ? 'stop doing' : 'also do'} this on Sundays">Sun</button><button class="x" data-act="nnDel" data-id="${n.id}" aria-label="Remove">×</button></div>`;
   const small = sun ? (total ? `${done} / ${total} done · Sunday: only items marked Sun` : 'Sunday is your day off · streak is safe') : `${done} / ${total} done today · ${sk ? sk + '-day streak' : 'complete all of them to start a streak'}`;
-  return `<div class="card" style="margin-bottom:16px"><h2><span>My daily non-negotiables</span><span style="display:flex;gap:12px;align-items:center"><small>${small}</small><button class="btn sm ${nnReorder ? '' : 'ghost'}" data-act="nnReorder">${nnReorder ? 'Done' : 'Reorder'}</button></span></h2>
+  return `<div class="card" style="margin-bottom:16px"><h2><span>My daily non-negotiables</span><span style="display:flex;gap:12px;align-items:center"><small>${small}</small><button class="btn sm ${nnReorder ? '' : 'ghost'}" data-act="nnReorder">${nnReorder ? 'Done' : 'Edit'}</button></span></h2>
     ${sun && !total ? '<div class="restnote">🙏 Sunday is your day of rest. Nothing is required today, and your streak is safe' + (sk ? ` (${sk}-day streak).` : '.') + '</div>' : bar(total ? done / total * 100 : 0, done === total && total ? 'g' : '')}
     <div class="nnl" style="margin-top:6px">${active.map(n => row(n, false)).join('') || ''}</div>
     ${off.length && sun ? `<div class="sec" style="margin-top:14px">Day off today (Monday to Saturday only)</div><div class="nnl">${off.map(n => row(n, true)).join('')}</div>` : ''}
     ${!S.nonneg.length ? '<div class="empty">Add the things you will do every day, no matter what.</div>' : ''}
     <form data-form="nn" class="inline" style="margin-top:12px"><input name="title" placeholder="Add a non-negotiable…" required><button class="btn sm">Add</button></form>
-    <div class="sub" style="margin-top:8px">Runs Monday to Saturday. Tap <b>Sun</b> on any item you want to keep doing on Sundays too.</div></div>`;
+    <div class="sub" style="margin-top:8px">Runs Monday to Saturday. Tap <b>Sun</b> on any item you want to keep doing on Sundays too. Press <b>Edit</b> to rename, reorder or remove items.</div></div>`;
 }
 function contentTodayCard() {
   const t = today(), e = schedFor(t), rest = e.tag === 'rest';
@@ -1396,9 +1396,20 @@ document.addEventListener('change', e => {
   }
 });
 
+document.addEventListener('input', e => {
+  const el = e.target, id = el.dataset && el.dataset.nnTitle; if (!id) return;
+  const n = S.nonneg.find(x => x.id === id); if (n) { n.title = el.value; save(); }   // saved as you type
+});
+document.addEventListener('change', e => {
+  const el = e.target, id = el.dataset && el.dataset.nnTitle; if (!id) return;
+  const n = S.nonneg.find(x => x.id === id); if (!n) return;
+  if (!el.value.trim()) { n.title = el.defaultValue || 'Untitled'; save(); toast('A non-negotiable needs a name'); render(); }
+  else { n.title = el.value.trim(); save(); }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.nnTitle) e.target.blur(); });
 let nnDragId = null;
 const nnRow = e => e.target.closest && e.target.closest('.row[data-nn]');
-document.addEventListener('dragstart', e => { const r = nnRow(e); if (!r) return; nnDragId = r.dataset.nn; r.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', nnDragId); });
+document.addEventListener('dragstart', e => { const r = nnRow(e); if (!r) return; nnDragId = r.dataset.nn; r.classList.add('dragging'); try { e.dataTransfer.setDragImage(r, 12, 12); } catch (x) {} e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', nnDragId); });
 document.addEventListener('dragover', e => { const r = nnRow(e); if (r && nnDragId) { e.preventDefault(); document.querySelectorAll('.row.dropover').forEach(x => x !== r && x.classList.remove('dropover')); r.classList.add('dropover'); } });
 document.addEventListener('drop', e => {
   const r = nnRow(e); if (!r || !nnDragId) return;
