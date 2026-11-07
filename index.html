@@ -189,6 +189,8 @@ td.r,th.r{text-align:right}
 .gtitle{font:600 17px/1.35 var(--head);margin:14px 0 4px}
 .ident{background:linear-gradient(135deg,rgba(202,163,28,.14),rgba(202,163,28,.03));border-color:var(--line2)}
 .idtext{font:500 17px/1.7 var(--head);margin:4px 0 16px}
+.mission{border-color:var(--line2);background:linear-gradient(135deg,rgba(255,255,255,.04),rgba(202,163,28,.08))}
+.mtext{font:600 21px/1.55 var(--head);color:var(--gold2);text-align:center;max-width:900px;margin:6px auto 8px;letter-spacing:-.01em}
 .nnl{display:grid;grid-template-columns:1fr 1fr;column-gap:32px}
 .nnl .row:nth-child(-n+2){border-top:0}
 .dchart{position:relative;display:grid;grid-template-columns:repeat(30,1fr);height:200px;align-items:end;border-bottom:1px solid var(--line);margin-top:28px}
@@ -289,7 +291,8 @@ const DEFAULT_SETTINGS = {
   goalTitle:'Hit £5K/month with the 6-week mentorship',
 };
 const DEFAULT_IDENTITY = "I am a man of faith, discipline and action.\nI do the hard things first and I keep my word to myself.\nI serve every client with total integrity, and I show up every single day: I make the calls, I follow up, I lead by example.\nI am building Soul Ark Scale and I will not stop until I have proven it works.\nThis is who I am.";
-const EXP_CATS = ['Bills','Business & software','Marketing','Food','Transport','Personal','Giving','Other'];
+const DEFAULT_MISSION = "To help men around the world rebuild their lives through faith, strength and brotherhood, and to show other coaches how to scale their impact with integrity.";
+const EXP_CATS =['Bills','Business & software','Marketing','Food','Transport','Personal','Giving','Other'];
 const defaultNonneg = () => [
   {id:uid(), key:'identity', title:'Read my identity statement out loud'},
   {id:uid(), title:'Prayer / time with God'},
@@ -306,7 +309,7 @@ let S = loadState();
 
 function blank() {
   return {settings:{...DEFAULT_SETTINGS, goalDeadline:addDays(today(), 90)}, leads:[], clients:[], tasks:[], payments:[], daily:{}, proof:{},
-    expenses:[], bills:[], identity:DEFAULT_IDENTITY, nonneg:defaultNonneg(), nonnegDone:{}};
+    expenses:[], bills:[], identity:DEFAULT_IDENTITY, mission:DEFAULT_MISSION, nonneg:defaultNonneg(), nonnegDone:{}};
 }
 function loadState() {
   let raw = null;
@@ -347,7 +350,7 @@ function save() {
 function sampleData(keep) {
   const t = today(), s = blank();
   s.settings.sample = true;
-  if (keep) { s.settings = {...keep.settings, sample:true}; s.identity = keep.identity; s.nonneg = keep.nonneg; } // keep the personal bits (goal, identity, non-negotiables)
+  if (keep) { s.settings = {...keep.settings, sample:true}; s.identity = keep.identity; s.mission = keep.mission; s.nonneg = keep.nonneg; } // keep the personal bits (goal, identity, non-negotiables)
   const hist = (final, createdAgo, lastAgo, lostFrom) => {
     const path = ORDER.slice(0, ORDER.indexOf(final === 'lost' ? lostFrom : final) + 1);
     const span = Math.max(createdAgo - lastAgo, 0);
@@ -575,9 +578,13 @@ function goalCard() {
 }
 function identityCard() {
   const read = S.nonneg.find(n => n.key === 'identity'), isRead = read && isDone(read.id);
-  return `<div class="card ident"><h2><span>Who I am ${S.identity === DEFAULT_IDENTITY ? '<span class="chip warn">Draft — make it yours</span>' : ''}</span><button class="btn sm ghost" data-act="editIdentity">Edit</button></h2>
+  return `<div class="card ident"><h2><span>Identity statement ${S.identity === DEFAULT_IDENTITY ? '<span class="chip warn">Draft — make it yours</span>' : ''}</span><button class="btn sm ghost" data-act="editIdentity">Edit</button></h2>
     <div class="idtext">${esc(S.identity).replace(/\n/g, '<br>')}</div>
     ${read ? `<button class="btn ${isRead ? 'good' : ''}" data-act="nnToggle" data-id="${read.id}">${isRead ? '✓ Read aloud today' : 'I’ve read it aloud'}</button>` : ''}</div>`;
+}
+function missionCard() {
+  return `<div class="card mission"><h2><span>Mission statement ${S.mission === DEFAULT_MISSION ? '<span class="chip warn">Draft — make it yours</span>' : ''}</span><button class="btn sm ghost" data-act="editMission">Edit</button></h2>
+    <div class="mtext">${esc(S.mission).replace(/\n/g, '<br>')}</div></div>`;
 }
 function nnCard() {
   const done = S.nonneg.filter(n => isDone(n.id)).length, total = S.nonneg.length, sk = nnStreak();
@@ -614,6 +621,7 @@ function vToday() {
   <div class="top"><div><h1>${greet}, ${esc(st.ownerName)}</h1><p>${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p></div>
     <div class="acts"><button class="btn" data-act="newLead">+ Lead</button><button class="btn ghost" data-act="newPayment">+ Payment</button><button class="btn ghost" data-act="newExpense">+ Spend</button><button class="btn ghost" data-act="newClient">+ Client</button></div></div>
   <div class="grid" style="margin-bottom:16px">${identityCard()}${goalCard()}</div>
+  <div style="margin-bottom:16px">${missionCard()}</div>
   ${nnCard()}
   <div class="kpis">
     <div class="kpi"><div class="l">Cash this month</div><div class="v">${gbp(rev)}</div><div class="s">${Math.round(rev / st.target * 100)}% of ${gbp(st.target)} goal</div>${bar(rev / st.target * 100)}</div>
@@ -1003,9 +1011,16 @@ function goalForm() {
     <div class="mfoot"><button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save goal</button></div></form>`);
 }
 function identityForm() {
-  modal('Who I am', `<form data-form="identity">
+  modal('Identity statement', `<form data-form="identity">
     <p class="sub" style="margin-bottom:10px">Write it in the present tense, as if it's already true. Read it out loud every morning.</p>
     <label class="fld"><textarea name="identity" style="min-height:240px;font:500 15px/1.6 var(--sans)" required>${esc(S.identity)}</textarea></label>
+    <div class="mfoot"><button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save</button></div></form>`);
+}
+
+function missionForm() {
+  modal('Mission statement', `<form data-form="mission">
+    <p class="sub" style="margin-bottom:10px">Why Soul Ark exists and who it serves, in one or two sentences.</p>
+    <label class="fld"><textarea name="mission" style="min-height:140px;font:500 15px/1.6 var(--sans)" required>${esc(S.mission)}</textarea></label>
     <div class="mfoot"><button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save</button></div></form>`);
 }
 
@@ -1055,6 +1070,7 @@ document.addEventListener('click', e => {
     case 'editBill': billForm(id); break;
     case 'editGoal': goalForm(); break;
     case 'editIdentity': identityForm(); break;
+    case 'editMission': missionForm(); break;
     case 'nnToggle': nnToggle(id); break;
     case 'nnDel': S.nonneg = S.nonneg.filter(x => x.id !== id); save(); render(); break;
     case 'delExp': S.expenses = S.expenses.filter(x => x.id !== id); save(); render(); break;
@@ -1075,7 +1091,7 @@ document.addEventListener('click', e => {
     case 'proofToggle': S.proof[el.dataset.k] = !S.proof[el.dataset.k]; save(); render(); break;
     case 'copyTmpl': { const txt = TEMPLATES[+el.dataset.i][1].replace(/\{name\}/g, '[name]'); (navigator.clipboard?.writeText(txt) || Promise.reject()).then(() => toast('Copied — swap [name] for theirs'), () => toast('Copy blocked by browser — select the text instead')); break; }
     case 'clearSample': if (confirm('Delete all sample data and start with a blank dashboard? (Your goal, identity statement and non-negotiables are kept.)')) {
-      const n = blank(); n.settings = {...S.settings, sample:false}; n.identity = S.identity; n.nonneg = S.nonneg; S = n; save(); render(); toast('Fresh start. Add your first lead!'); } break;
+      const n = blank(); n.settings = {...S.settings, sample:false}; n.identity = S.identity; n.mission = S.mission; n.nonneg = S.nonneg; S = n; save(); render(); toast('Fresh start. Add your first lead!'); } break;
     case 'loadSample': if (confirm('Replace everything with sample data? (Your goal, identity statement and non-negotiables are kept.)')) { S = sampleData(S); save(); render(); } break;
     case 'wipe': if (confirm('Delete ALL your data? Export a backup first if you are unsure. This cannot be undone.')) { S = blank(); save(); render(); toast('Everything deleted'); } break;
     case 'export': {
@@ -1135,6 +1151,8 @@ document.addEventListener('submit', e => {
     save(); closeModal(); render(); toast('Goal saved');
   } else if (kind === 'identity') {
     S.identity = f.identity.trim() || DEFAULT_IDENTITY; save(); closeModal(); render(); toast('Identity statement saved');
+  } else if (kind === 'mission') {
+    S.mission = f.mission.trim() || DEFAULT_MISSION; save(); closeModal(); render(); toast('Mission statement saved');
   } else if (kind === 'nn') {
     S.nonneg.push({id:uid(), title:f.title.trim()}); save(); render();
   } else if (kind === 'settings') {
@@ -1174,7 +1192,7 @@ function restoreDrafts(root) {
   });
 }
 /* remember which pop-up is open, so a refresh reopens it with your text still in it */
-['leadForm','clientForm','payForm','expenseForm','billForm','goalForm','identityForm','winForm','lostForm'].forEach(name => {
+['leadForm','clientForm','payForm','expenseForm','billForm','goalForm','identityForm','missionForm','winForm','lostForm'].forEach(name => {
   const orig = window[name];
   window[name] = function (id) { drafts.__modal = {name, id}; saveDrafts(); return orig(id); };
 });
