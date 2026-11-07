@@ -363,7 +363,7 @@ let S = loadState();
 
 function blank() {
   return {settings:{...DEFAULT_SETTINGS, offers:DEFAULT_SETTINGS.offers.map(o => ({...o})), goalDeadline:addDays(today(), 90)}, leads:[], clients:[], tasks:[], payments:[], daily:{}, proof:{},
-    expenses:[], bills:[], identity:DEFAULT_IDENTITY, mission:DEFAULT_MISSION, nonneg:defaultNonneg(), nonnegVersion:2, nonnegDone:{}, schedule:defaultSchedule(), contentLog:{}, weekly:{}};
+    expenses:[], bills:[], income:[], identity:DEFAULT_IDENTITY, mission:DEFAULT_MISSION, nonneg:defaultNonneg(), nonnegVersion:2, nonnegDone:{}, schedule:defaultSchedule(), contentLog:{}, weekly:{}};
 }
 function loadState() {
   let raw = null;
@@ -391,7 +391,7 @@ function migrate(o) {
   if ((o.nonnegVersion || 0) < 2) { s.nonneg = defaultNonneg(); s.nonnegVersion = 2; } // one-time: the agreed 9 non-negotiables
   if (s.settings.goalTitle === 'Hit £5K/month with the 6-week mentorship') s.settings.goalTitle = DEFAULT_SETTINGS.goalTitle; // goal is purchases, not £
   s.leads.forEach(l => { l.history = l.history || [{stage:l.stage, date:l.created || today()}]; l.created = l.created || l.history[0].date; });
-  if (s.settings.sample && !(o.expenses && o.expenses.length)) { const sm = sampleData(); s.expenses = sm.expenses; s.bills = sm.bills; } // older sample data had no spending
+  if (s.settings.sample && !(o.expenses && o.expenses.length)) { const sm = sampleData(); s.expenses = sm.expenses; s.bills = sm.bills; s.income = sm.income; } // older sample data had no spending
   return s;
 }
 let storageOK = true, lastSaved = null;
@@ -486,6 +486,8 @@ function sampleData(keep) {
   [['Circle community',79,1,'Business & software'],['Canva',12,3,'Business & software'],['Phone',30,5,'Bills'],['Rent',700,1,'Bills'],['Email & webinar tools',25,12,'Business & software'],['Insurance',40,20,'Bills']]
     .forEach(([name, amount, day, cat]) => s.bills.push({id:uid(), name, amount, day, cat}));
   for (let m = 2; m >= 0; m--) s.bills.forEach(b => { const d = mdate(m, b.day); if (d <= t) s.expenses.push({id:uid(), date:d, amount:b.amount, cat:b.cat, note:b.name, billId:b.id}); });
+  s.income.push({id:uid(), name:'Rental income (England)', amount:650, day:1});
+  for (let m = 2; m >= 0; m--) { const d = mdate(m, 1); if (d <= t) s.payments.push({id:uid(), date:d, who:'Rental income (England)', amount:650, note:'Monthly income', offer:'', counted:false, kind:'other', incomeId:s.income[0].id, clientId:''}); }
   const cats = ['Food','Transport','Food','Personal','Marketing','Food','Giving'];
   const notes = {Food:'Food & coffee', Transport:'Fuel / transport', Personal:'Personal', Marketing:'Ads / boosts', Giving:'Tithe / giving'};
   for (let i = 0; i < 60; i++) {
@@ -513,7 +515,10 @@ const stuckLeads = () => openLeads().filter(isStuck);
 const dueLeads = () => openLeads().filter(l => l.nextFollowUp && l.nextFollowUp <= today());
 const followCount = () => new Set([...stuckLeads(), ...dueLeads()]).size;   // everyone who needs chasing right now
 function setTitle() { const n = followCount(); document.title = (n ? `(${n}) ` : '') + S.settings.bizName + ' — Command Centre'; }
-const monthRev = ym => sum(S.payments.filter(p => p.date.startsWith(ym)), 'amount');
+const isBiz = p => p.kind !== 'other';   // 'other' = rental etc., kept out of business targets
+const monthRev = ym => sum(S.payments.filter(p => isBiz(p) && p.date.startsWith(ym)), 'amount');
+const monthOther = ym => sum(S.payments.filter(p => !isBiz(p) && p.date.startsWith(ym)), 'amount');
+const incomeReceived = i => S.payments.some(p => p.incomeId === i.id && p.date.startsWith(monthKey()));
 const activeClients = () => S.clients.filter(c => c.status === 'active');
 const clientPaid = c => sum(S.payments.filter(p => p.clientId === c.id), 'amount');
 const clientWeek = c => { const d = diff(c.start, today()); return d < 0 ? 0 : Math.floor(d / 7) + 1; };
@@ -915,13 +920,13 @@ const ord = n => n + ([11, 12, 13].includes(n) ? 'th' : ({1:'st', 2:'nd', 3:'rd'
 
 function vRevenue() {
   const st = S.settings, ym = monthKey(), t = today();
-  const rev = monthRev(ym), last = monthRev(monthKey(-1));
+  const rev = monthRev(ym), last = monthRev(monthKey(-1)), otherIn = monthOther(ym);
   const now = new Date(), dom = now.getDate(), dim = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const proj = rev / dom * dim;
   const monthExp = S.expenses.filter(e => e.date.startsWith(ym));
-  const out = sum(monthExp, 'amount'), net = rev - out;
+  const out = sum(monthExp, 'amount'), totalIn = rev + otherIn, net = totalIn - out;
   const everyday = sum(monthExp.filter(e => !isBillPay(e)), 'amount'), avg = everyday / dom;
-  const unpaid = S.bills.filter(b => !billPaid(b)), unpaidSum = sum(unpaid, 'amount'), billsTotal = sum(S.bills, 'amount');
+  const unpaid = S.bills.filter(b => !billPaid(b)), unpaidSum = sum(unpaid, 'amount'), billsTotal = sum(S.bills, 'amount'), incomeTotal = sum(S.income, 'amount');
 
   /* revenue chart */
   const months = [-5,-4,-3,-2,-1,0].map(o => { const k = monthKey(o); return {k, v:monthRev(k)}; });
@@ -952,13 +957,24 @@ function vRevenue() {
       <button class="btn sm ghost" data-act="editBill" data-id="${b.id}">Edit</button></div>`;
   };
 
+  const incomeRow = i => {
+    const got = incomeReceived(i), due = `${ym}-${pad(Math.min(i.day, dim))}`, dd = diff(t, due);
+    const chip = got ? '<span class="chip good">Received ✓</span>' : dd < 0 ? `<span class="chip warn">${-dd} days late</span>` : `<span class="chip">expected ${dd === 0 ? 'today' : 'in ' + dd + ' days'}</span>`;
+    return `<div class="row"><div class="grow"><b>${esc(i.name)}</b><div class="sub">${gbp(i.amount)} · ${ord(i.day)} of each month</div></div>${chip}
+      <button class="btn sm ${got ? 'ghost' : 'good'}" data-act="incomePay" data-id="${i.id}">${got ? 'Undo' : 'Mark received'}</button>
+      <button class="btn sm ghost" data-act="editIncome" data-id="${i.id}">Edit</button></div>`;
+  };
+  const incomeCard = `<div class="card"><h2>Other income <small>${gbp(incomeTotal)} / month · rental, etc.</small></h2>
+    ${S.income.map(incomeRow).join('') || '<div class="empty">Add rental or other regular income.</div>'}
+    <div style="margin-top:10px"><button class="btn sm ghost" data-act="newIncome">+ Add income</button></div></div>`;
   return `<div class="top"><div><h1>Money</h1><p>Everything coming in, everything going out, and where it's heading.</p></div>
     <div class="acts"><button class="btn" data-act="newPayment">+ Money in</button><button class="btn ghost" data-act="newExpense">+ Money out</button><button class="btn ghost" data-act="newBill">+ Bill</button></div></div>
   <div class="kpis">
-    <div class="kpi"><div class="l">Money in · ${mname(ym)}</div><div class="v">${gbp(rev)}</div><div class="s">${Math.round(rev / st.target * 100)}% of ${gbp(st.target)} monthly target</div>${bar(rev / st.target * 100)}</div>
+    <div class="kpi"><div class="l">Money in · ${mname(ym)}</div><div class="v">${gbp(totalIn)}</div><div class="s">${otherIn ? `business ${gbp(rev)} + other ${gbp(otherIn)}<br>` : ''}${Math.round(rev / st.target * 100)}% of ${gbp(st.target)} business target</div>${bar(rev / st.target * 100)}</div>
     <div class="kpi"><div class="l">Money out · ${mname(ym)}</div><div class="v">${gbp(out)}</div><div class="s">${monthExp.length} payments</div></div>
     <div class="kpi ${net < 0 ? 'alert' : ''}"><div class="l">Left over this month</div><div class="v" style="${net >= 0 ? 'color:var(--good)' : ''}">${gbp(net)}</div><div class="s">${net >= 0 ? 'in profit' : 'spending more than you earn'}</div></div>
     <div class="kpi"><div class="l">Total bills / month</div><div class="v">${gbp(billsTotal)}</div><div class="s">${S.bills.length} bills · about ${gbp(billsTotal / dim)} a day</div></div>
+    <div class="kpi"><div class="l">Other income / month</div><div class="v">${gbp(incomeTotal)}</div><div class="s">${incomeTotal ? `covers ${Math.round(incomeTotal / Math.max(1, billsTotal) * 100)}% of your bills` : 'rental etc. · add it below'}</div></div>
     <div class="kpi"><div class="l">Bills still to pay</div><div class="v">${gbp(unpaidSum)}</div><div class="s">${unpaid.length} of ${S.bills.length} bills not paid yet</div></div>
     <div class="kpi"><div class="l">Average daily spend</div><div class="v">${gbp(avg)}</div><div class="s">${gbp(avg * dim)} on pace for the month</div></div>
     <div class="kpi"><div class="l">Income on pace for</div><div class="v">${gbp(proj)}</div><div class="s">${last ? 'last month ' + gbp(last) : 'at today’s run rate'}</div></div>
@@ -966,11 +982,12 @@ function vRevenue() {
 
   <div class="sec gold">Money in</div>
   <div class="grid" style="margin-top:8px">
-    <div class="card"><h2>Income, last 6 months <small>dashed line = ${gbp(st.target)}/month target</small></h2>
+    <div class="card"><h2>Business income, last 6 months <small>dashed line = ${gbp(st.target)}/month target</small></h2>
       <div class="chart"><div class="tl" style="bottom:${st.target / mx * (210 - 26)}px"><span>Target</span></div>
       ${months.map((m, i) => `<div class="col ${i === 5 ? 'cur' : ''}" title="${mname(m.k)}: ${gbp(m.v)}"><b>${gbp(m.v)}</b><i style="height:${m.v / mx * (210 - 54)}px"></i></div>`).join('')}</div>
       <div class="xl">${months.map(m => `<span>${mname(m.k)}</span>`).join('')}</div></div>
-    <div class="card"><h2>Latest payments in</h2>${pays.length ? `<table>${pays.map(p => `<tr><td><b>${esc(p.who)}</b><div class="sub">${fdate(p.date)}${p.note ? ' · ' + esc(p.note) : ''}${p.offer && p.offer !== '' && !(p.note || '').includes(offerName(p.offer)) ? ' · ' + esc(offerName(p.offer)) : ''}</div></td><td class="r val">${gbp(p.amount)}</td><td class="r"><button class="x" data-act="delPay" data-id="${p.id}" aria-label="Delete payment">×</button></td></tr>`).join('')}</table>` : '<div class="empty">No payments logged yet.</div>'}</div>
+    <div class="stack"><div class="card"><h2>Latest payments in</h2>${pays.length ? `<table>${pays.map(p => `<tr><td><b>${esc(p.who)}</b><div class="sub">${fdate(p.date)}${p.kind === 'other' ? ' · Other income' : ''}${p.note ? ' · ' + esc(p.note) : ''}${p.offer && p.offer !== '' && !(p.note || '').includes(offerName(p.offer)) ? ' · ' + esc(offerName(p.offer)) : ''}</div></td><td class="r val">${gbp(p.amount)}</td><td class="r"><button class="x" data-act="delPay" data-id="${p.id}" aria-label="Delete payment">×</button></td></tr>`).join('')}</table>` : '<div class="empty">No payments logged yet.</div>'}</div>
+    ${incomeCard}</div>
   </div>
 
   <div class="sec" style="margin-top:26px">Money out</div>
@@ -1020,7 +1037,7 @@ function vProof() {
   const top = Math.max(...steps.map(s => s[1]), 1);
   const rate = (a, b) => b ? Math.round(a / b * 100) : null;
   const won = ls.filter(l => l.stage === 'won');
-  const cash = sum(S.payments.filter(p => p.date >= from), 'amount');
+  const cash = sum(S.payments.filter(p => isBiz(p) && p.date >= from), 'amount');
   const avgClose = won.length ? Math.round(sum(won, l => diff(l.created, l.wonDate || l.created)) / won.length) : 0;
   const callWin = rate(steps[5][1], steps[4][1]), overall = rate(steps[5][1], steps[2][1]);
   const rangeLbl = proofRange ? `the last ${proofRange} days` : 'all time';
@@ -1123,7 +1140,8 @@ function clientForm(id) {
 }
 function payForm() {
   const offers = S.settings.offers;
-  modal('Log a sale', `<form data-form="payment">
+  modal('Log money in', `<form data-form="payment">
+    ${sel('Type of income', 'kind', [['business', 'Business sale'], ['other', 'Other income (rental, etc.)']], 'business')}
     ${sel('What was bought?', 'offer', [['', 'Other / not one of my offers'], ...offers.map(o => [o.id, o.name + ' · ' + gbp(o.price)])], offers[0].id)}
     <div class="two">${fld('Date', 'date', today(), 'date', 'required')}${fld('Amount (' + CUR + ')', 'amount', offers[0].price, 'number', 'min="1" required')}</div>
     <label class="fld"><span>From</span><select name="clientId"><option value="">Someone else…</option>${S.clients.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label>
@@ -1194,6 +1212,14 @@ function dayForm(id) {
     <div class="mfoot"><button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save</button></div></form>`);
 }
 
+function incomeForm(id) {
+  const i = id ? S.income.find(x => x.id === id) : {name:'', amount:'', day:1};
+  modal(id ? 'Edit income' : 'New regular income', `<form data-form="income" data-id="${id || ''}">
+    ${fld('Name', 'name', i.name, 'text', 'required placeholder="e.g. Rental income (England)"')}
+    <div class="two">${fld('Amount per month (' + CUR + ')', 'amount', i.amount, 'number', 'min="0.01" step="0.01" required')}${fld('Usually arrives on day', 'day', i.day, 'number', 'min="1" max="31" required')}</div>
+    <div class="mfoot">${id ? '<button type="button" class="btn danger l" data-act="delIncome" data-id="' + id + '">Delete</button>' : ''}<button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save</button></div></form>`);
+}
+
 /* ================= actions ================= */
 function applyStage(l, stage) {
   const t = today();
@@ -1237,6 +1263,15 @@ document.addEventListener('click', e => {
       try { S = migrate(JSON.parse(localStorage.getItem(el.dataset.k))); save(); render(); toast('Backup restored'); } catch (x) { toast('Could not read that backup'); } } break;
     case 'newExpense': expenseForm(); break;
     case 'newBill': billForm(); break;
+    case 'newIncome': incomeForm(); break;
+    case 'editIncome': incomeForm(id); break;
+    case 'delIncome': if (confirm('Delete this income? Payments already logged stay in your records.')) { S.income = S.income.filter(x => x.id !== id); save(); closeModal(); render(); } break;
+    case 'incomePay': {
+      const i = S.income.find(x => x.id === id);
+      if (incomeReceived(i)) S.payments = S.payments.filter(p => !(p.incomeId === id && p.date.startsWith(monthKey())));
+      else { S.payments.push({id:uid(), date:today(), who:i.name, amount:i.amount, note:'Monthly income', offer:'', counted:false, kind:'other', incomeId:id, clientId:''}); toast(`${i.name} received`); }
+      save(); render(); break;
+    }
     case 'editBill': billForm(id); break;
     case 'editGoal': goalForm(); break;
     case 'goalBump': { const g = S.settings; g.goalCount = Math.max(0, (g.goalCount || 0) + +el.dataset.n); save(); render(); if (g.goalCount === g.goalTarget && +el.dataset.n > 0) toast('Goal hit! 🎯'); break; }
@@ -1305,10 +1340,10 @@ document.addEventListener('submit', e => {
     if (id) Object.assign(S.clients.find(x => x.id === id), data); else S.clients.push({id:uid(), ...data});
     save(); closeModal(); render();
   } else if (kind === 'payment') {
-    const c = S.clients.find(x => x.id === f.clientId), counted = !!f.counts;
-    S.payments.push({id:uid(), date:f.date, who:c ? c.name : (f.who.trim() || 'Payment'), amount:+f.amount || 0, note:(f.note || '').trim() || offerName(f.offer), offer:f.offer || '', counted, clientId:c ? c.id : ''});
+    const c = S.clients.find(x => x.id === f.clientId), counted = !!f.counts && f.kind !== 'other';
+    S.payments.push({id:uid(), date:f.date, who:c ? c.name : (f.who.trim() || 'Payment'), amount:+f.amount || 0, note:(f.note || '').trim() || offerName(f.offer), offer:f.offer || '', counted, kind:f.kind === 'other' ? 'other' : 'business', clientId:c ? c.id : ''});
     if (counted) S.settings.goalCount = (S.settings.goalCount || 0) + 1;
-    save(); closeModal(); render(); toast(counted ? `Sale logged 💷 Goal: ${S.settings.goalCount} / ${S.settings.goalTarget}` : 'Payment logged');
+    save(); closeModal(); render(); toast(counted ? `Sale logged 💷 Goal: ${S.settings.goalCount} / ${S.settings.goalTarget}` : f.kind === 'other' ? 'Other income logged' : 'Payment logged');
   } else if (kind === 'win') {
     const l = S.leads.find(x => x.id === id), price = +f.price || 0, paid = +f.paid || 0;
     applyStage(l, 'won'); l.wonDate = t; l.value = price; l.nextFollowUp = '';
@@ -1330,6 +1365,10 @@ document.addEventListener('submit', e => {
   } else if (kind === 'bill') {
     const data = {name:f.name.trim(), amount:+f.amount || 0, day:Math.min(31, Math.max(1, +f.day || 1)), cat:f.cat};
     if (id) Object.assign(S.bills.find(x => x.id === id), data); else S.bills.push({id:uid(), ...data});
+    save(); closeModal(); render();
+  } else if (kind === 'income') {
+    const data = {name:f.name.trim(), amount:+f.amount || 0, day:Math.min(31, Math.max(1, +f.day || 1))};
+    if (id) Object.assign(S.income.find(x => x.id === id), data); else S.income.push({id:uid(), ...data});
     save(); closeModal(); render();
   } else if (kind === 'goal') {
     Object.assign(S.settings, {goalTitle:f.goalTitle.trim(), goalDeadline:f.goalDeadline, goalTarget:Math.max(1, +f.goalTarget || 1), goalUnit:(f.goalUnit || '').trim(), goalCount:Math.max(0, +f.goalCount || 0)});
@@ -1379,7 +1418,7 @@ function restoreDrafts(root) {
   });
 }
 /* remember which pop-up is open, so a refresh reopens it with your text still in it */
-['leadForm','clientForm','payForm','expenseForm','billForm','goalForm','identityForm','missionForm','dayForm','winForm','lostForm'].forEach(name => {
+['leadForm','clientForm','payForm','expenseForm','billForm','goalForm','incomeForm','identityForm','missionForm','dayForm','winForm','lostForm'].forEach(name => {
   const orig = window[name];
   window[name] = function (id) { drafts.__modal = {name, id}; saveDrafts(); return orig(id); };
 });
@@ -1398,9 +1437,16 @@ window.addEventListener('pagehide', save);
 window.addEventListener('storage', e => { if (e.key === KEY && e.newValue) { try { S = migrate(JSON.parse(e.newValue)); render(); } catch (x) {} } });
 
 document.addEventListener('change', e => {
-  const t = e.target; if (!t || t.name !== 'offer') return;
+  const t = e.target; if (!t || (t.name !== 'offer' && t.name !== 'kind')) return;
   const f = t.closest('form'); if (!f) return;
   const fire = el => el && el.dispatchEvent(new Event('input', {bubbles:true}));
+  if (t.name === 'kind') {   // business sale vs other income
+    if (f.dataset.form !== 'payment') return;
+    const first = S.settings.offers[0];
+    if (t.value === 'other') { f.elements.offer.value = ''; fire(f.elements.offer); f.elements.counts.checked = false; fire(f.elements.counts); }
+    else { f.elements.offer.value = first.id; fire(f.elements.offer); f.elements.amount.value = first.price; fire(f.elements.amount); f.elements.counts.checked = true; fire(f.elements.counts); }
+    return;
+  }
   if (f.dataset.form === 'lead' && t.value && f.elements.value) { f.elements.value.value = offerPrice(t.value); fire(f.elements.value); }
   if (f.dataset.form === 'payment') {
     if (t.value && f.elements.amount) { f.elements.amount.value = offerPrice(t.value); fire(f.elements.amount); }
