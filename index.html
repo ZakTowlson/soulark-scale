@@ -316,7 +316,7 @@ const PRI_COL = {high:'var(--bad)', med:'var(--warn)', low:'var(--dim)'};
 const LOST_REASONS = ['Price','Timing','Ghosted','Not a good fit','Went elsewhere','Other'];
 const TEMPLATES = [
   ['Soft check-in (DM went quiet)', "Hey {name}, wanted to circle back on what you shared about where you're at. Still want to sort it out this year? No pressure either way, just checking in."],
-  ['After the call — gentle nudge', "Hey {name}, been thinking about our call. What's your gut telling you about the 6-week mentorship? Happy to answer anything that's holding you back."],
+  ['After the call — gentle nudge', "Hey {name}, been thinking about our call. What's your gut telling you about the BRIDGE mentorship? Happy to answer anything that's holding you back."],
   ['Book the call', "{name}, based on what you've told me I think a quick 20 min chat would help. Here's my calendar: [link]. Pick a time that works for you."],
   ['Webinar attendee', "Hey {name}, good to see you on the webinar. What was the one thing that landed for you? Curious where you're at right now."],
   ['Last follow-up (close the loop)', "Hey {name}, I'll close the loop here so I'm not chasing you. If the timing's right later, I'm here. Whatever you decide, I'm rooting for you."],
@@ -511,6 +511,8 @@ const silent = l => diff(l.lastContact || l.created, today());
 const isStuck = l => OPEN.includes(l.stage) && (l.nextFollowUp ? l.nextFollowUp < today() : silent(l) >= S.settings.staleDays);
 const stuckLeads = () => openLeads().filter(isStuck);
 const dueLeads = () => openLeads().filter(l => l.nextFollowUp && l.nextFollowUp <= today());
+const followCount = () => new Set([...stuckLeads(), ...dueLeads()]).size;   // everyone who needs chasing right now
+function setTitle() { const n = followCount(); document.title = (n ? `(${n}) ` : '') + S.settings.bizName + ' — Command Centre'; }
 const monthRev = ym => sum(S.payments.filter(p => p.date.startsWith(ym)), 'amount');
 const activeClients = () => S.clients.filter(c => c.status === 'active');
 const clientPaid = c => sum(S.payments.filter(p => p.clientId === c.id), 'amount');
@@ -543,7 +545,7 @@ const ICON = {
   bell:'<path d="M6 8a6 6 0 0112 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 004 0"/>',
   users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14a5 5 0 014.5 5"/>',
   check:'<rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M8 12l3 3 5-6"/>',
-  pound:'<path d="M18 7a4 4 0 00-7.5 1.5V13m0 0H7m3.5 0v3.5c0 1.6-.8 2.9-2.5 3.5h10M10.5 13H15"/>',
+  pound:'<path d="M3 8a2 2 0 012-2h12"/><rect x="3" y="8" width="18" height="12" rx="2"/><circle cx="16.5" cy="14" r=".9" fill="currentColor"/>',
   trophy:'<path d="M8 4h8v6a4 4 0 01-8 0z"/><path d="M8 6H4v1a3 3 0 003 3M16 6h4v1a3 3 0 01-3 3"/><path d="M12 14v4M8 21h8M10 18h4"/>',
   cog:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
 };
@@ -576,7 +578,7 @@ if (!NAV.some(n => n[0] === view)) view = 'today';
 let proofRange = 90, taskFilter = 'All';
 
 function renderSide() {
-  const st = S.settings, rev = monthRev(monthKey()), due = dueLeads().length + stuckLeads().filter(l => !dueLeads().includes(l)).length, tk = dueTasks().length;
+  const st = S.settings, rev = monthRev(monthKey()), due = followCount(), tk = dueTasks().length;
   const initials = st.bizName.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
   $('#side').innerHTML = `
     <div class="brand"><div class="mono">${esc(initials)}</div><div><b>${esc(st.bizName)}</b><small>Command Centre</small></div></div>
@@ -596,10 +598,12 @@ function render() {
   $('#main').innerHTML = banner + fn();
   restoreDrafts($('#main'));
   saveUI();
+  setTitle();
 }
 function go(v) { view = v; location.hash = v; render(); window.scrollTo(0, 0); }
 
 /* ---------- TODAY ---------- */
+const quickAdd = () => `<form data-form="quicklead" class="inline" style="margin-top:12px"><input name="name" placeholder="Just messaged someone? Type their name or @handle and press Enter" required style="flex:3;min-width:220px"><select name="source" style="flex:1;min-width:130px">${SOURCES.map(x => `<option>${x}</option>`).join('')}</select><button class="btn sm">Add lead</button></form>`;
 function leadRow(l) {
   const sl = silent(l);
   const why = l.nextFollowUp ? (l.nextFollowUp < today() ? `follow-up ${rel(l.nextFollowUp)}` : `follow-up ${rel(l.nextFollowUp)}`) : `silent ${sl} days`;
@@ -742,7 +746,7 @@ function vToday() {
     <div class="stack">
       <div class="card"><h2>Chase these first <small>${chaseTotal > 6 ? `top 6 of ${chaseTotal} · ` : ''}biggest money first</small></h2>
         ${chase.length ? chase.map(leadRow).join('') : '<div class="empty">Nobody waiting on you. Go start new conversations.</div>'}
-        ${chaseTotal > 6 ? '<div style="margin-top:8px"><button class="btn sm ghost" data-act="go" data-v="followups">See all follow-ups</button></div>' : ''}</div>
+        ${chaseTotal > 6 ? '<div style="margin-top:8px"><button class="btn sm ghost" data-act="go" data-v="followups">See all follow-ups</button></div>' : ''}${quickAdd()}</div>
       <div class="card"><h2>Today's to-do <small>${tasks.length} left · ${doneToday.length} done</small></h2>
         ${tasks.map(taskRow).join('') || '<div class="empty">All clear. Nice work.</div>'}
         <form data-form="task" class="inline" style="margin-top:12px"><input type="hidden" name="cat" value="Admin"><input type="hidden" name="due" value="${t}"><input type="hidden" name="pri" value="med">
@@ -846,6 +850,7 @@ function vFollow() {
   const stuckVal = sum(stuckLeads(), 'value');
   return `<div class="top"><div><h1>Follow-ups</h1><p>${stuckVal ? `<b style="color:#FF8B8B">${gbp(stuckVal)}</b> is stuck in conversations right now. Every chase below is potential revenue.` : 'Nothing slipping through the cracks.'}</p></div></div>
     <div class="grid"><div class="card">
+      <div class="sub" style="margin-bottom:4px">Add everyone you message. They come back here when it's time to chase.</div>${quickAdd()}
       ${sec('bad', 'Overdue', over)}${sec('gold', 'Due today', todayL)}${sec('', 'Next 7 days', soon)}${sec('', 'No follow-up date set (these go cold)', nodate)}
       ${open.length ? '' : '<div class="empty">No open leads. Add some from the Pipeline.</div>'}</div>
     <div class="card"><h2>Message scripts <small>tap to copy</small></h2>
@@ -1288,6 +1293,11 @@ document.addEventListener('submit', e => {
       S.leads.push({id:uid(), name:f.name.trim(), handle:f.handle.trim(), source:f.source, stage:f.stage, offer:f.offer || '', value:+f.value || 0, lastContact:f.lastContact || t, nextFollowUp:f.nextFollowUp, notes:f.notes, created:t, history:[{stage:f.stage, date:t}]});
       save(); closeModal(); render(); toast('Lead added');
     }
+  } else if (kind === 'quicklead') {
+    const raw = f.name.trim(), next = noSun(addDays(t, S.settings.gap));
+    S.leads.push({id:uid(), name:raw, handle:raw.startsWith('@') ? raw : '', source:f.source, stage:'dm', offer:'bridge', value:offerPrice('bridge'), lastContact:t, nextFollowUp:next, notes:'', created:t, history:[{stage:'dm', date:t}]});
+    save(); render(); toast(`Added ${raw}. First follow-up ${fdate(next)}`);
+    const q = document.querySelector('form[data-form=quicklead] input[name=name]'); if (q) q.focus();
   } else if (kind === 'client') {
     const data = {name:f.name.trim(), start:f.start, price:+f.price || 0, status:f.status, health:f.health, nextSession:f.nextSession, notes:f.notes, testimonial:!!f.testimonial, upsell:!!f.upsell};
     if (id) Object.assign(S.clients.find(x => x.id === id), data); else S.clients.push({id:uid(), ...data});
