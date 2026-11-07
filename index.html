@@ -921,7 +921,7 @@ function vRevenue() {
   const monthExp = S.expenses.filter(e => e.date.startsWith(ym));
   const out = sum(monthExp, 'amount'), net = rev - out;
   const everyday = sum(monthExp.filter(e => !isBillPay(e)), 'amount'), avg = everyday / dom;
-  const unpaid = S.bills.filter(b => !billPaid(b)), unpaidSum = sum(unpaid, 'amount');
+  const unpaid = S.bills.filter(b => !billPaid(b)), unpaidSum = sum(unpaid, 'amount'), billsTotal = sum(S.bills, 'amount');
 
   /* revenue chart */
   const months = [-5,-4,-3,-2,-1,0].map(o => { const k = monthKey(o); return {k, v:monthRev(k)}; });
@@ -958,7 +958,8 @@ function vRevenue() {
     <div class="kpi"><div class="l">Money in · ${mname(ym)}</div><div class="v">${gbp(rev)}</div><div class="s">${Math.round(rev / st.target * 100)}% of ${gbp(st.target)} monthly target</div>${bar(rev / st.target * 100)}</div>
     <div class="kpi"><div class="l">Money out · ${mname(ym)}</div><div class="v">${gbp(out)}</div><div class="s">${monthExp.length} payments</div></div>
     <div class="kpi ${net < 0 ? 'alert' : ''}"><div class="l">Left over this month</div><div class="v" style="${net >= 0 ? 'color:var(--good)' : ''}">${gbp(net)}</div><div class="s">${net >= 0 ? 'in profit' : 'spending more than you earn'}</div></div>
-    <div class="kpi"><div class="l">Bills still to pay</div><div class="v">${gbp(unpaidSum)}</div><div class="s">${unpaid.length} of ${S.bills.length} bills</div></div>
+    <div class="kpi"><div class="l">Total bills / month</div><div class="v">${gbp(billsTotal)}</div><div class="s">${S.bills.length} bills · about ${gbp(billsTotal / dim)} a day</div></div>
+    <div class="kpi"><div class="l">Bills still to pay</div><div class="v">${gbp(unpaidSum)}</div><div class="s">${unpaid.length} of ${S.bills.length} bills not paid yet</div></div>
     <div class="kpi"><div class="l">Average daily spend</div><div class="v">${gbp(avg)}</div><div class="s">${gbp(avg * dim)} on pace for the month</div></div>
     <div class="kpi"><div class="l">Income on pace for</div><div class="v">${gbp(proj)}</div><div class="s">${last ? 'last month ' + gbp(last) : 'at today’s run rate'}</div></div>
   </div>
@@ -984,6 +985,7 @@ function vRevenue() {
       ${S.expenses.length ? `<table>${[...S.expenses].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 14).map(e => `<tr><td>${fdate(e.date)}</td><td><span class="chip">${esc(e.cat)}</span></td><td class="sub">${esc(e.note || '')}</td><td class="r"><b>${gbp(e.amount)}</b></td><td class="r"><button class="x" data-act="delExp" data-id="${e.id}" aria-label="Delete">×</button></td></tr>`).join('')}</table>` : '<div class="empty">Nothing logged yet. Log every pound that goes out.</div>'}</div>
     <div class="stack">
       <div class="card"><h2>Monthly bills <small>${gbp(sum(S.bills, 'amount'))} / month · ${gbp(unpaidSum)} left to pay</small></h2>
+        ${S.bills.length ? `<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:6px"><div><div class="sub">Total every month</div><div style="font:600 30px var(--head);letter-spacing:-.02em">${gbp(billsTotal)}</div></div><div style="text-align:right"><div class="sub">Paid this month <b style="color:var(--good)">${gbp(billsTotal - unpaidSum)}</b></div><div class="sub">Still to pay <b style="color:var(--text)">${gbp(unpaidSum)}</b></div></div></div>${bar(billsTotal ? (billsTotal - unpaidSum) / billsTotal * 100 : 0, unpaidSum === 0 ? 'g' : '')}<div style="height:6px"></div>` : ''}
         ${[...S.bills].sort((a, b) => a.day - b.day).map(billRow).join('') || '<div class="empty">Add your recurring bills: rent, software, phone…</div>'}
         <div style="margin-top:10px"><button class="btn sm ghost" data-act="newBill">+ Add bill</button></div></div>
       <div class="card"><h2>Where it went <small>${mname(ym)} so far</small></h2>
