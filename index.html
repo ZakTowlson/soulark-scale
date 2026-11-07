@@ -190,6 +190,13 @@ td.r,th.r{text-align:right}
 .ident{background:linear-gradient(135deg,rgba(202,163,28,.14),rgba(202,163,28,.03));border-color:var(--line2)}
 .idtext{font:500 17px/1.7 var(--head);margin:4px 0 16px}
 .mission{border-color:var(--line2);background:linear-gradient(135deg,rgba(255,255,255,.04),rgba(202,163,28,.08))}
+.sunbtn{background:none;border:1px solid var(--line);color:var(--dim);border-radius:7px;font-size:11px;font-weight:700;padding:2px 8px}
+.sunbtn:hover{border-color:var(--line2)}
+.sunbtn.on{background:rgba(202,163,28,.2);border-color:var(--line2);color:var(--gold2)}
+.offrow{opacity:.55}
+.tick.off{border-style:dashed;cursor:default}
+.restnote{background:rgba(202,163,28,.08);border:1px solid var(--line2);border-radius:12px;padding:12px 16px;color:var(--gold2);font-weight:600;margin-bottom:8px}
+.mini i.offbar{background:rgba(255,255,255,.14)}
 .nnl{display:grid;grid-template-columns:1fr 1fr;column-gap:32px}
 .nnl .row:nth-child(-n+2){border-top:0}
 .dchart{position:relative;display:grid;grid-template-columns:repeat(30,1fr);height:200px;align-items:end;border-bottom:1px solid var(--line);margin-top:28px}
@@ -256,6 +263,10 @@ function rel(s) {
   if (n === -1) return 'yesterday';
   return n > 0 ? `in ${n} days` : `${-n} days overdue`;
 }
+
+/* Sunday is the day of rest: nothing is required, and streaks skip it instead of breaking */
+const isSunday = (d = today()) => parse(d).getDay() === 0;
+const noSun = d => isSunday(d) ? addDays(d, 1) : d;
 
 /* ================= model ================= */
 const STAGES = [
@@ -456,9 +467,10 @@ const dayLog = d => S.daily[d] || {dms:0, content:0};
 const autoCount = (date, stage) => S.leads.filter(l => l.history.some(h => h.date === date && h.stage === stage)).length;
 const dueTasks = () => S.tasks.filter(t => !t.done && t.due && t.due <= today());
 function streak() {
-  let d = today(), n = 0;
-  if (dayLog(d).dms < S.settings.dmTarget) d = addDays(d, -1);
-  while (dayLog(d).dms >= S.settings.dmTarget) { n++; d = addDays(d, -1); }
+  const hit = x => dayLog(x).dms >= S.settings.dmTarget;
+  let d = today(), n = 0, guard = 0;
+  if (!isSunday(d) && !hit(d)) d = addDays(d, -1);
+  while (guard++ < 3650) { if (isSunday(d)) { d = addDays(d, -1); continue; } if (!hit(d)) break; n++; d = addDays(d, -1); }
   return n;
 }
 function bump(key, n) {
@@ -553,19 +565,26 @@ function taskRow(t) {
 }
 const fdateL = s => parse(s).toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric'});
 const isDone = id => (S.nonnegDone[today()] || []).includes(id);
+const nnApplies = (item, d) => !isSunday(d) || !!item.sun;
 function nnStreak() {
-  const ids = S.nonneg.map(i => i.id); if (!ids.length) return 0;
-  const ok = d => ids.every(id => (S.nonnegDone[d] || []).includes(id));
-  let d = today(), n = 0;
-  if (!ok(d)) d = addDays(d, -1);
-  while (ok(d) && n < 3650) { n++; d = addDays(d, -1); }
+  if (!S.nonneg.length) return 0;
+  const items = d => S.nonneg.filter(i => nnApplies(i, d));
+  const ok = d => items(d).every(i => (S.nonnegDone[d] || []).includes(i.id));
+  let d = today(), n = 0, guard = 0;
+  if (items(d).length && !ok(d)) d = addDays(d, -1); // today is still in progress
+  while (guard++ < 3650) {
+    if (!items(d).length) { d = addDays(d, -1); continue; } // a day off neither adds to nor breaks the streak
+    if (!ok(d)) break;
+    n++; d = addDays(d, -1);
+  }
   return n;
 }
 function nnToggle(id) {
   const t = today(), a = S.nonnegDone[t] = S.nonnegDone[t] || [], i = a.indexOf(id);
   if (i >= 0) a.splice(i, 1); else a.push(id);
   save(); render();
-  if (S.nonneg.length && S.nonneg.every(n => a.includes(n.id))) toast('All non-negotiables done. You did what you said you would do. 💪');
+  const active = S.nonneg.filter(n => nnApplies(n, t));
+  if (active.length && active.every(n => a.includes(n.id))) toast('All non-negotiables done. You did what you said you would do. 💪');
 }
 function goalCard() {
   const st = S.settings, left = diff(today(), st.goalDeadline);
@@ -594,12 +613,20 @@ function missionCard() {
     <div class="idtext" style="margin-bottom:4px">${esc(S.mission).replace(/\n/g, '<br>')}</div></div>`;
 }
 function nnCard() {
-  const done = S.nonneg.filter(n => isDone(n.id)).length, total = S.nonneg.length, sk = nnStreak();
-  return `<div class="card" style="margin-bottom:16px"><h2>My daily non-negotiables <small>${done} / ${total} done today · ${sk ? sk + '-day streak' : 'complete all of them to start a streak'}</small></h2>
-    ${bar(total ? done / total * 100 : 0, done === total && total ? 'g' : '')}
-    <div class="nnl" style="margin-top:6px">${S.nonneg.map(n => `<div class="row"><button class="tick ${isDone(n.id) ? 'done' : ''}" data-act="nnToggle" data-id="${n.id}" aria-label="Done">${TICK}</button>
-      <div class="grow ${isDone(n.id) ? 'done-t' : ''}"><b style="font-weight:600">${esc(n.title)}</b></div><button class="x" data-act="nnDel" data-id="${n.id}" aria-label="Remove">×</button></div>`).join('') || '<div class="empty">Add the things you will do every day, no matter what.</div>'}</div>
-    <form data-form="nn" class="inline" style="margin-top:12px"><input name="title" placeholder="Add a non-negotiable…" required><button class="btn sm">Add</button></form></div>`;
+  const t = today(), sun = isSunday(t);
+  const active = S.nonneg.filter(n => nnApplies(n, t)), off = S.nonneg.filter(n => !nnApplies(n, t));
+  const done = active.filter(n => isDone(n.id)).length, total = active.length, sk = nnStreak();
+  const row = (n, rest) => `<div class="row ${rest ? 'offrow' : ''}">${rest ? '<span class="tick off"></span>' : `<button class="tick ${isDone(n.id) ? 'done' : ''}" data-act="nnToggle" data-id="${n.id}" aria-label="Done">${TICK}</button>`}
+    <div class="grow ${isDone(n.id) && !rest ? 'done-t' : ''}"><b style="font-weight:600">${esc(n.title)}</b></div>
+    <button class="sunbtn ${n.sun ? 'on' : ''}" data-act="nnSun" data-id="${n.id}" title="Tap to ${n.sun ? 'stop doing' : 'also do'} this on Sundays">Sun</button><button class="x" data-act="nnDel" data-id="${n.id}" aria-label="Remove">×</button></div>`;
+  const small = sun ? (total ? `${done} / ${total} done · Sunday: only items marked Sun` : 'Sunday is your day off · streak is safe') : `${done} / ${total} done today · ${sk ? sk + '-day streak' : 'complete all of them to start a streak'}`;
+  return `<div class="card" style="margin-bottom:16px"><h2>My daily non-negotiables <small>${small}</small></h2>
+    ${sun && !total ? '<div class="restnote">🙏 Sunday is your day of rest. Nothing is required today, and your streak is safe' + (sk ? ` (${sk}-day streak).` : '.') + '</div>' : bar(total ? done / total * 100 : 0, done === total && total ? 'g' : '')}
+    <div class="nnl" style="margin-top:6px">${active.map(n => row(n, false)).join('') || ''}</div>
+    ${off.length && sun ? `<div class="sec" style="margin-top:14px">Day off today (Monday to Saturday only)</div><div class="nnl">${off.map(n => row(n, true)).join('')}</div>` : ''}
+    ${!S.nonneg.length ? '<div class="empty">Add the things you will do every day, no matter what.</div>' : ''}
+    <form data-form="nn" class="inline" style="margin-top:12px"><input name="title" placeholder="Add a non-negotiable…" required><button class="btn sm">Add</button></form>
+    <div class="sub" style="margin-top:8px">Runs Monday to Saturday. Tap <b>Sun</b> on any item you want to keep doing on Sundays too.</div></div>`;
 }
 function vToday() {
   const t = today(), st = S.settings, rev = monthRev(monthKey());
@@ -625,7 +652,7 @@ function vToday() {
   const wk = act.filter(c => c.nextSession && diff(t, c.nextSession) >= 0 && diff(t, c.nextSession) <= 7 || c.health === 'risk' || clientWeek(c) >= 6)
     .sort((a, b) => (b.health === 'risk') - (a.health === 'risk'));
   return `
-  <div class="top"><div><h1>${greet}, ${esc(st.ownerName)}</h1><p>${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p></div>
+  <div class="top"><div><h1>${greet}, ${esc(st.ownerName)}</h1><p>${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}${isSunday() ? ' · Day of rest 🙏' : ''}</p></div>
     <div class="acts"><button class="btn" data-act="newLead">+ Lead</button><button class="btn ghost" data-act="newPayment">+ Payment</button><button class="btn ghost" data-act="newExpense">+ Spend</button><button class="btn ghost" data-act="newClient">+ Client</button></div></div>
   <div class="grid" style="margin-bottom:16px">${identityCard()}${goalCard()}</div>
   <div style="margin-bottom:16px">${missionCard()}</div>
@@ -654,7 +681,7 @@ function vToday() {
           <div class="n">${v}<small> / ${tgt}</small></div>
           ${key ? `<button class="pm" data-act="bump" data-k="${key}" data-n="1" aria-label="plus">+</button>${key === 'dms' ? `<button class="pm" data-act="bump" data-k="dms" data-n="5" style="width:auto;padding:0 8px;font-size:12px">+5</button>` : ''}` : '<span class="sub" style="min-width:56px">auto</span>'}</div>`).join('')}
         <div class="sec" style="margin-top:14px">DMs · last 7 days</div>
-        <div class="mini">${days.map(d => { const n = dayLog(d).dms || 0; return `<div title="${fdate(d)}: ${n} DMs"><i class="${n < st.dmTarget ? 'lo' : ''}" style="height:${Math.min(100, n / (st.dmTarget * 1.3) * 100)}%"></i>${parse(d).toLocaleDateString('en-GB',{weekday:'narrow'})}</div>`; }).join('')}</div></div>
+        <div class="mini">${days.map(d => { const n = dayLog(d).dms || 0; return `<div title="${fdate(d)}: ${isSunday(d) && !n ? 'day off' : n + ' DMs'}"><i class="${isSunday(d) && n < st.dmTarget ? 'offbar' : n < st.dmTarget ? 'lo' : ''}" style="height:${isSunday(d) && !n ? 4 : Math.min(100, n / (st.dmTarget * 1.3) * 100)}%"></i>${parse(d).toLocaleDateString('en-GB',{weekday:'narrow'})}</div>`; }).join('')}</div></div>
       <div class="card"><h2>Clients needing you <small>this week</small></h2>
         ${wk.length ? wk.map(c => `<div class="row"><div class="grow"><b>${esc(c.name)}</b> ${c.health === 'risk' ? '<span class="chip bad">At risk</span>' : ''}${clientWeek(c) >= 6 ? ' <span class="chip warn">Final week</span>' : ''}
           <div class="sub">Week ${Math.min(clientWeek(c), 6)} of 6${c.nextSession ? ' · session ' + rel(c.nextSession) : ''}</div></div><button class="btn sm ghost" data-act="editClient" data-id="${c.id}">Open</button></div>`).join('') : '<div class="empty">Nothing urgent.</div>'}</div>
@@ -953,7 +980,7 @@ function snapsHtml() {
 
 /* ================= modals ================= */
 function leadForm(id) {
-  const l = id ? S.leads.find(x => x.id === id) : {name:'', handle:'', source:SOURCES[0], stage:'dm', value:S.settings.offerPrice, lastContact:today(), nextFollowUp:addDays(today(), S.settings.gap), notes:''};
+  const l = id ? S.leads.find(x => x.id === id) : {name:'', handle:'', source:SOURCES[0], stage:'dm', value:S.settings.offerPrice, lastContact:today(), nextFollowUp:noSun(addDays(today(), S.settings.gap)), notes:''};
   modal(id ? 'Edit lead' : 'New lead', `<form data-form="lead" data-id="${id || ''}">
     <div class="two">${fld('Name', 'name', l.name, 'text', 'required')}${fld('Instagram / handle', 'handle', l.handle)}</div>
     <div class="two">${sel('Source', 'source', SOURCES, l.source)}${sel('Stage', 'stage', STAGES.map(s => [s.id, s.label]), l.stage)}</div>
@@ -1037,7 +1064,7 @@ function missionForm() {
 function applyStage(l, stage) {
   const t = today();
   l.stage = stage; l.history.push({stage, date:t}); l.lastContact = t;
-  if (OPEN.includes(stage) && !l.nextFollowUp) l.nextFollowUp = addDays(t, S.settings.gap);
+  if (OPEN.includes(stage) && !l.nextFollowUp) l.nextFollowUp = noSun(addDays(t, S.settings.gap));
 }
 function moveLead(id, stage) {
   const l = S.leads.find(x => x.id === id); if (!l || l.stage === stage) return;
@@ -1051,7 +1078,7 @@ function toggleTask(id) {
   if (t.done && t.repeat) {
     const step = t.repeat === 'daily' ? 1 : 7;
     const base = t.due && t.due > today() ? t.due : today();
-    if (!S.tasks.some(x => !x.done && x.title === t.title && x.repeat === t.repeat)) S.tasks.push({...t, id:uid(), done:false, doneAt:'', due:addDays(base, step)});
+    if (!S.tasks.some(x => !x.done && x.title === t.title && x.repeat === t.repeat)) S.tasks.push({...t, id:uid(), done:false, doneAt:'', due:t.repeat === 'daily' ? noSun(addDays(base, step)) : addDays(base, step)});
   }
   save(); render();
 }
@@ -1067,8 +1094,8 @@ document.addEventListener('click', e => {
     case 'newClient': clientForm(); break;
     case 'editClient': clientForm(id); break;
     case 'newPayment': payForm(); break;
-    case 'chased': { const l = S.leads.find(x => x.id === id); l.lastContact = today(); l.nextFollowUp = addDays(today(), S.settings.gap); save(); render(); toast(`Logged. Next follow-up with ${l.name}: ${fdate(l.nextFollowUp)}`); break; }
-    case 'snooze': { const l = S.leads.find(x => x.id === id); l.nextFollowUp = addDays(today(), +el.dataset.n); save(); render(); toast('Snoozed'); break; }
+    case 'chased': { const l = S.leads.find(x => x.id === id); l.lastContact = today(); l.nextFollowUp = noSun(addDays(today(), S.settings.gap)); save(); render(); toast(`Logged. Next follow-up with ${l.name}: ${fdate(l.nextFollowUp)}`); break; }
+    case 'snooze': { const l = S.leads.find(x => x.id === id); l.nextFollowUp = noSun(addDays(today(), +el.dataset.n)); save(); render(); toast('Snoozed'); break; }
     case 'step': { const l = S.leads.find(x => x.id === id); const i = OPEN.indexOf(l.stage) + +el.dataset.dir; if (i < 0) return; moveLead(id, i >= OPEN.length ? 'won' : OPEN[i]); break; }
     case 'delLead': if (confirm('Delete this lead permanently?')) { S.leads = S.leads.filter(x => x.id !== id); save(); closeModal(); render(); } break;
     case 'delClient': if (confirm('Delete this client? Their payments stay in your revenue.')) { S.clients = S.clients.filter(x => x.id !== id); S.payments.forEach(p => { if (p.clientId === id) p.clientId = ''; }); save(); closeModal(); render(); } break;
@@ -1082,6 +1109,7 @@ document.addEventListener('click', e => {
     case 'editIdentity': identityForm(); break;
     case 'editMission': missionForm(); break;
     case 'nnToggle': nnToggle(id); break;
+    case 'nnSun': { const n = S.nonneg.find(x => x.id === id); n.sun = !n.sun; save(); render(); break; }
     case 'nnDel': S.nonneg = S.nonneg.filter(x => x.id !== id); save(); render(); break;
     case 'delExp': S.expenses = S.expenses.filter(x => x.id !== id); save(); render(); break;
     case 'spendMode': spendMode = el.dataset.m; render(); break;
