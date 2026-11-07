@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Soul Ark Scale — Command Centre</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0B1126;--panel:#131B38;--panel2:#1A2347;--line:rgba(255,255,255,.08);--line2:rgba(202,163,28,.4);
+  --gold:#CAA31C;--gold2:#E6C458;--text:#F2F0E8;--muted:#A0A9C6;--dim:#6F789A;
+  --good:#43C08A;--warn:#F2A93B;--bad:#EE6262;--blue:#6E94F2;
+  --r:14px;--sans:'Manrope',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;--head:'Poppins',var(--sans);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font:14px/1.5 var(--sans);min-height:100vh;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+h1,h2,h3{font-family:var(--head);font-weight:600;letter-spacing:-.01em}
+.app{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
+.side{position:sticky;top:0;height:100vh;background:#0E1530;border-right:1px solid var(--line);display:flex;flex-direction:column;padding:20px 12px;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:11px;padding:4px 8px 22px}
+.mono{width:38px;height:38px;border-radius:50%;border:1.5px solid var(--gold);display:grid;place-items:center;font:600 13px var(--head);color:var(--gold);flex:none}
+.brand b{display:block;font:600 14px var(--head);line-height:1.2}
+.brand small{color:var(--dim);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav button{display:flex;align-items:center;gap:11px;background:none;border:0;border-left:2px solid transparent;border-radius:0 8px 8px 0;padding:9px 12px;color:var(--muted);text-align:left;font-weight:600;font-size:13.5px}
+.nav button:hover{background:rgba(255,255,255,.04);color:var(--text)}
+.nav button.on{color:var(--gold2);background:rgba(202,163,28,.09);border-left-color:var(--gold)}
+.nav svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav .badge{margin-left:auto;background:var(--bad);color:#fff;font-size:11px;font-weight:700;border-radius:20px;padding:0 7px;min-width:20px;text-align:center}
+.nav .badge.gold{background:var(--gold);color:#1a1400}
+.sidefoot{margin-top:auto;padding:16px 10px 0;border-top:1px solid var(--line)}
+.sidefoot small{color:var(--dim);display:block;margin-bottom:6px;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.sidefoot b{font:600 15px var(--head)}
+.main{padding:30px 34px 70px;max-width:1360px;width:100%;min-width:0}
+.grid>*,.stack>*,.cgrid>*{min-width:0}
+.card{overflow-wrap:break-word;overflow-x:auto}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+.top h1{font-size:26px;line-height:1.2}
+.top p{color:var(--muted);margin-top:3px}
+.acts{display:flex;gap:8px;flex-wrap:wrap}
+.btn{background:var(--gold);color:#1a1400;border:0;border-radius:10px;padding:9px 16px;font-weight:700;font-size:13.5px;white-space:nowrap}
+.btn:hover{background:var(--gold2)}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line);font-weight:600}
+.btn.ghost:hover{border-color:var(--line2);background:rgba(202,163,28,.07)}
+.btn.sm{padding:5px 11px;font-size:12.5px;border-radius:8px}
+.btn.danger{background:transparent;color:var(--bad);border:1px solid rgba(238,98,98,.4)}
+.btn.good{background:var(--good);color:#04180f}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px}
+.card h2{font-size:15px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.card h2 small{font:500 12px var(--sans);color:var(--dim)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:15px 17px;text-align:left;display:block;width:100%}
+button.kpi:hover{border-color:var(--line2)}
+.kpi .l{font-size:11.5px;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;font-weight:700}
+.kpi .v{font:600 26px var(--head);margin:4px 0 2px;letter-spacing:-.02em}
+.kpi .s{font-size:12.5px;color:var(--muted)}
+.kpi.alert{border-color:rgba(238,98,98,.45);background:linear-gradient(180deg,rgba(238,98,98,.09),var(--panel))}
+.kpi.alert .v{color:#FF8B8B}
+.bar{height:6px;background:rgba(255,255,255,.08);border-radius:6px;overflow:hidden;margin-top:9px}
+.bar i{display:block;height:100%;background:var(--gold);border-radius:6px}
+.bar i.g{background:var(--good)}
+.grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;align-items:start}
+.stack{display:flex;flex-direction:column;gap:16px}
+.row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0}
+.row .grow{flex:1;min-width:0}
+.row b{font-weight:700}
+.sub{color:var(--muted);font-size:12.5px}
+.val{font:600 14px var(--head);color:var(--gold2);white-space:nowrap}
+.chip{display:inline-block;font-size:11px;font-weight:700;border-radius:20px;padding:1px 9px;background:rgba(255,255,255,.08);color:var(--muted);vertical-align:1px;white-space:nowrap}
+.chip[data-s=convo]{background:rgba(110,148,242,.16);color:#9DB6FA}
+.chip[data-s=booked]{background:rgba(167,139,250,.16);color:#C4B2FC}
+.chip[data-s=decide]{background:rgba(202,163,28,.18);color:var(--gold2)}
+.chip[data-s=won],.chip.good{background:rgba(67,192,138,.16);color:#6FD9A9}
+.chip[data-s=lost],.chip.bad{background:rgba(238,98,98,.16);color:#FF8B8B}
+.chip.warn{background:rgba(242,169,59,.16);color:#F7C071}
+.empty{color:var(--dim);padding:14px 0;text-align:center}
+.banner{background:rgba(202,163,28,.1);border:1px solid var(--line2);border-radius:12px;padding:11px 16px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;color:var(--gold2)}
+/* forms */
+.fld{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.fld>span{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.03em}
+input,select,textarea{background:#0E1530;border:1px solid var(--line);border-radius:9px;padding:9px 11px;width:100%;outline:none;color-scheme:dark}
+input:focus,select:focus,textarea:focus{border-color:var(--gold)}
+input[type=checkbox]{width:auto;accent-color:var(--gold);width:17px;height:17px}
+textarea{resize:vertical;min-height:70px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.chk{display:flex;align-items:center;gap:9px;margin:4px 0 12px;font-weight:600;color:var(--muted)}
+.inline{display:flex;gap:8px;flex-wrap:wrap}
+.inline input,.inline select{width:auto;flex:1;min-width:120px}
+.inline input[name=title]{flex:3;min-width:200px}
+/* checkbox round */
+.tick{width:22px;height:22px;border-radius:50%;border:2px solid var(--dim);background:none;flex:none;display:grid;place-items:center;color:transparent;padding:0}
+.tick:hover{border-color:var(--gold)}
+.tick.done{background:var(--good);border-color:var(--good);color:#04180f}
+.tick svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
+.done-t{text-decoration:line-through;color:var(--dim)}
+.pri{width:8px;height:8px;border-radius:50%;flex:none}
+.x{background:none;border:0;color:var(--dim);font-size:20px;line-height:1;padding:2px 6px}
+.x:hover{color:var(--bad)}
+.sec{font-size:11.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:18px 0 4px;display:flex;gap:8px;align-items:center}
+.sec:first-child{margin-top:0}
+.sec.bad{color:#FF8B8B}.sec.gold{color:var(--gold2)}
+/* kanban */
+.kan{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(250px,1fr);gap:12px;overflow-x:auto;padding-bottom:12px;align-items:start}
+.kcol{background:#0F1630;border:1px solid var(--line);border-radius:var(--r);padding:12px;min-height:200px}
+.kcol.over{border-color:var(--gold);background:rgba(202,163,28,.06)}
+.khead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;padding:0 2px}
+.khead b{font:600 13px var(--head)}
+.khead small{color:var(--muted);font-size:12px;font-weight:600}
+.lcard{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:11px 12px;margin-bottom:9px;cursor:grab}
+.lcard:hover{border-color:var(--line2)}
+.lcard.stuck{border-left:3px solid var(--bad)}
+.lcard.dragging{opacity:.4}
+.lcard .t{display:flex;justify-content:space-between;gap:8px}
+.lcard .m{margin:7px 0 2px;display:flex;gap:5px;flex-wrap:wrap}
+.lcard .a{display:flex;gap:6px;margin-top:9px}
+.lcard .a button{background:rgba(255,255,255,.06);border:0;border-radius:7px;padding:3px 10px;font-size:12px;font-weight:700;color:var(--muted)}
+.lcard .a button:hover{background:rgba(202,163,28,.2);color:var(--gold2)}
+.lcard .a .ch{flex:1}
+/* client */
+.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(290px,100%),1fr));gap:14px}
+.weeks{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin:12px 0 6px}
+.weeks i{height:7px;border-radius:4px;background:rgba(255,255,255,.1)}
+.weeks i.d{background:var(--gold)}.weeks i.n{background:var(--gold2);box-shadow:0 0 0 2px rgba(202,163,28,.3)}
+/* score */
+.sc{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+.sc:first-of-type{border-top:0}
+.sc .n{font:600 18px var(--head);min-width:70px;text-align:center}
+.sc .n small{color:var(--dim);font-size:12px;font-weight:500}
+.sc button.pm{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:none;color:var(--text);font-size:16px;font-weight:700}
+.sc button.pm:hover{border-color:var(--gold);color:var(--gold2)}
+.sc .grow{flex:1}
+.mini{display:flex;align-items:flex-end;gap:6px;height:64px;margin-top:6px}
+.mini div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;font-size:10.5px;color:var(--dim)}
+.mini i{width:100%;max-width:26px;background:var(--gold);border-radius:4px 4px 0 0;min-height:2px;display:block}
+.mini i.lo{background:rgba(202,163,28,.4)}
+/* charts */
+.chart{position:relative;display:flex;align-items:flex-end;gap:14px;height:210px;padding:26px 6px 0;border-bottom:1px solid var(--line)}
+.chart .col{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;position:relative;z-index:1}
+.chart .col i{width:100%;max-width:64px;background:var(--gold);border-radius:6px 6px 0 0;display:block;min-height:2px}
+.chart .col.cur i{background:var(--gold2)}
+.chart .col b{font:600 12px var(--head);color:var(--text)}
+.chart .tl{position:absolute;left:0;right:0;border-top:1.5px dashed rgba(255,255,255,.35);z-index:0}
+.chart .tl span{position:absolute;right:0;top:-19px;font-size:11px;color:var(--muted);background:var(--panel);padding:0 4px}
+.xl{display:flex;gap:14px;padding:6px 6px 0;color:var(--muted);font-size:12px;font-weight:600}
+.xl span{flex:1;text-align:center}
+.funnel .f{display:grid;grid-template-columns:150px 1fr 70px;gap:12px;align-items:center;padding:7px 0}
+.funnel .f .bar{margin:0;height:22px;border-radius:6px}
+.funnel .f .bar i{border-radius:6px}
+.funnel .rate{color:var(--muted);font-size:12px;padding:0 0 0 162px;margin-top:-3px}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:11.5px;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;padding:6px 8px;font-weight:700}
+td{padding:10px 8px;border-top:1px solid var(--line)}
+td.r,th.r{text-align:right}
+.rd{display:flex;gap:12px;padding:11px 0;border-top:1px solid var(--line);align-items:center;width:100%;background:none;border-left:0;border-right:0;border-bottom:0;text-align:left}
+.rd:first-of-type{border-top:0}
+.ico{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;flex:none;font-size:13px;font-weight:800;background:rgba(255,255,255,.08);color:var(--dim)}
+.ico.ok{background:var(--good);color:#04180f}
+.phase{border:1px solid var(--line);border-radius:12px;padding:14px 16px;flex:1;min-width:230px}
+.phase.cur{border-color:var(--line2);background:rgba(202,163,28,.07)}
+.phase small{color:var(--gold2);font-weight:800;letter-spacing:.08em;font-size:11px;text-transform:uppercase}
+.story{background:linear-gradient(135deg,rgba(202,163,28,.14),rgba(202,163,28,.03));border:1px solid var(--line2);border-radius:var(--r);padding:20px 24px;margin-bottom:16px;font:500 17px/1.55 var(--head)}
+.story em{font-style:normal;color:var(--gold2);font-weight:700}
+.tmpl{border-top:1px solid var(--line);padding:11px 0}
+.tmpl:first-of-type{border-top:0}
+.tmpl p{color:var(--muted);font-size:13px;margin:3px 0 7px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{background:none;border:0;padding:6px 14px;font-weight:700;font-size:12.5px;color:var(--muted)}
+.seg button.on{background:rgba(202,163,28,.18);color:var(--gold2)}
+/* modal / toast */
+#modal .mback{position:fixed;inset:0;background:rgba(3,6,18,.72);z-index:50;display:grid;place-items:center;padding:16px;overflow-y:auto}
+.mbox{background:var(--panel);border:1px solid var(--line2);border-radius:18px;padding:22px 24px;width:100%;max-width:500px;max-height:94vh;overflow-y:auto}
+.mhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.mhead h3{font-size:18px}
+.mfoot{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+.mfoot .l{margin-right:auto}
+#toast{position:fixed;bottom:22px;left:50%;width:max-content;text-align:center;transform:translateX(-50%) translateY(30px);background:var(--gold);color:#1a1400;font-weight:700;padding:10px 20px;border-radius:30px;opacity:0;pointer-events:none;transition:.25s;z-index:60;max-width:90vw}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.gnum{font:700 72px/1 var(--head);color:var(--gold2);letter-spacing:-.03em;margin:6px 0 2px}
+.gnum.warn{color:var(--warn)}.gnum.bad{color:#FF8B8B}
+.glabel{color:var(--muted);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:12px}
+.gtitle{font:600 17px/1.35 var(--head);margin:14px 0 4px}
+.ident{background:linear-gradient(135deg,rgba(202,163,28,.14),rgba(202,163,28,.03));border-color:var(--line2)}
+.idtext{font:500 17px/1.7 var(--head);margin:4px 0 16px}
+.nnl{display:grid;grid-template-columns:1fr 1fr;column-gap:32px}
+.nnl .row:nth-child(-n+2){border-top:0}
+.dchart{position:relative;display:grid;grid-template-columns:repeat(30,1fr);height:200px;align-items:end;border-bottom:1px solid var(--line);margin-top:28px}
+.dchart .dc{height:100%;display:flex;align-items:flex-end;justify-content:center}
+.dchart .dc i{width:62%;background:rgba(202,163,28,.75);border-radius:3px 3px 0 0;min-height:1px;display:block}
+.dchart .dc.cur i,.dchart .dc:hover i{background:var(--gold2)}
+.dchart svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.dchart polyline{fill:none;stroke:#F2F0E8;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.dchart .ym{position:absolute;left:0;top:-22px;font-size:11px;color:var(--muted)}
+.dx{display:grid;grid-template-columns:repeat(30,1fr);margin-top:6px;color:var(--muted);font-size:11px}
+.dx span{justify-self:center;white-space:nowrap}
+.legend{display:flex;gap:18px;color:var(--muted);font-size:12.5px;margin-top:12px;flex-wrap:wrap;align-items:center}
+.legend i{display:inline-block;vertical-align:middle;margin-right:6px}
+.legend .sw{width:12px;height:12px;background:rgba(202,163,28,.75);border-radius:2px}
+.legend .ln{width:18px;height:0;border-top:2px solid #F2F0E8}
+.catrow{display:grid;grid-template-columns:120px 1fr 96px;gap:10px;align-items:center;padding:5px 0}
+.catrow .bar{margin:0}
+@media(max-width:1000px){.grid{grid-template-columns:1fr}}
+@media(max-width:700px){.nnl{grid-template-columns:1fr}.nnl .row:nth-child(2){border-top:1px solid var(--line)}.gnum{font-size:60px}.catrow{grid-template-columns:90px 1fr 80px}}
+@media(max-width:900px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .side{position:static;height:auto;flex-direction:row;align-items:center;padding:10px 12px;gap:10px;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line)}
+  .brand{padding:0;flex:none}.brand div{display:none}
+  .nav{flex-direction:row;gap:2px}
+  .nav button{border-left:0;border-radius:8px;padding:8px 11px;white-space:nowrap}
+  .nav button.on{border-left:0}
+  .sidefoot{display:none}
+  .main{padding:20px 16px 60px}
+  .top h1{font-size:22px}
+  .funnel .f{grid-template-columns:100px 1fr 54px}
+  .funnel .rate{padding-left:112px}
+  .two{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side" id="side"></aside>
+  <main class="main" id="main"></main>
+</div>
+<div id="modal"></div>
+<div id="toast"></div>
+
+<script>
+/* ================= helpers ================= */
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Math.random().toString(36).slice(2, 9);
+const pad = n => String(n).padStart(2, '0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const today = () => iso(new Date());
+const parse = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+const addDays = (s, n) => { const d = parse(s); d.setDate(d.getDate() + n); return iso(d); };
+const diff = (a, b) => Math.round((parse(b) - parse(a)) / 864e5);
+const gbp = n => (n < 0 ? '-' : '') + '£' + Math.round(Math.abs(n)).toLocaleString('en-GB');
+const sum = (arr, k) => arr.reduce((a, x) => a + (+(typeof k === 'function' ? k(x) : x[k]) || 0), 0);
+const fdate = s => s ? parse(s).toLocaleDateString('en-GB', {weekday:'short', day:'numeric', month:'short'}) : '';
+const mname = ym => parse(ym + '-01').toLocaleDateString('en-GB', {month:'short'});
+const monthKey = (offset = 0) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + offset); return `${d.getFullYear()}-${pad(d.getMonth()+1)}`; };
+function rel(s) {
+  const n = diff(today(), s);
+  if (n === 0) return 'today';
+  if (n === 1) return 'tomorrow';
+  if (n === -1) return 'yesterday';
+  return n > 0 ? `in ${n} days` : `${-n} days overdue`;
+}
+
+/* ================= model ================= */
+const STAGES = [
+  {id:'dm',     label:'New / DM Sent',       p:.05},
+  {id:'convo',  label:'In Conversation',     p:.15},
+  {id:'booked', label:'Call Booked',         p:.40},
+  {id:'decide', label:'Call Done · Deciding',p:.60},
+  {id:'won',    label:'Won',                 p:1},
+  {id:'lost',   label:'Lost',                p:0},
+];
+const ORDER = ['dm','convo','booked','decide','won'];
+const OPEN = ['dm','convo','booked','decide'];
+const stageLabel = id => STAGES.find(s => s.id === id)?.label || id;
+const prob = id => STAGES.find(s => s.id === id)?.p || 0;
+const SOURCES = ['Instagram DM','YouTube','Webinar','Circle community','Referral','Other'];
+const CATS = ['Client','Community','Content','Admin','Self'];
+const CAT_RENAME = {Sales:'Client', Clients:'Client', Build:'Admin'}; // old category names → new ones
+const PRI_COL = {high:'var(--bad)', med:'var(--warn)', low:'var(--dim)'};
+const LOST_REASONS = ['Price','Timing','Ghosted','Not a good fit','Went elsewhere','Other'];
+const TEMPLATES = [
+  ['Soft check-in (DM went quiet)', "Hey {name}, wanted to circle back on what you shared about where you're at. Still want to sort it out this year? No pressure either way, just checking in."],
+  ['After the call — gentle nudge', "Hey {name}, been thinking about our call. What's your gut telling you about the 6-week mentorship? Happy to answer anything that's holding you back."],
+  ['Book the call', "{name}, based on what you've told me I think a quick 20 min chat would help. Here's my calendar: [link]. Pick a time that works for you."],
+  ['Webinar attendee', "Hey {name}, good to see you on the webinar. What was the one thing that landed for you? Curious where you're at right now."],
+  ['Last follow-up (close the loop)', "Hey {name}, I'll close the loop here so I'm not chasing you. If the timing's right later, I'm here. Whatever you decide, I'm rooting for you."],
+];
+
+const DEFAULT_SETTINGS = {
+  bizName:'Soul Ark Scale', ownerName:'Zak', target:5000, offerPrice:997, staleDays:3, gap:3,
+  dmTarget:20, convoTarget:5, callTarget:1, contentTarget:1,
+  nextOffer:'Scale Mentorship for Coaches', sample:false,
+  goalTitle:'Hit £5K/month with the 6-week mentorship',
+};
+const DEFAULT_IDENTITY = "I am a man of faith, discipline and action.\nI do the hard things first and I keep my word to myself.\nI serve every client with total integrity, and I show up every single day: I make the calls, I follow up, I lead by example.\nI am building Soul Ark Scale and I will not stop until I have proven it works.\nThis is who I am.";
+const EXP_CATS = ['Bills','Business & software','Marketing','Food','Transport','Personal','Giving','Other'];
+const defaultNonneg = () => [
+  {id:uid(), key:'identity', title:'Read my identity statement out loud'},
+  {id:uid(), title:'Prayer / time with God'},
+  {id:uid(), title:'Hit my daily DM target'},
+  {id:uid(), title:'Follow up with every lead that has gone quiet'},
+  {id:uid(), title:'Create content (post or video)'},
+  {id:uid(), title:'Train / move my body'},
+];
+const KEY = 'coachos.v1';
+let S = loadState();
+
+function blank() {
+  return {settings:{...DEFAULT_SETTINGS, goalDeadline:addDays(today(), 90)}, leads:[], clients:[], tasks:[], payments:[], daily:{}, proof:{},
+    expenses:[], bills:[], identity:DEFAULT_IDENTITY, nonneg:defaultNonneg(), nonnegDone:{}};
+}
+function loadState() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) return migrate(JSON.parse(raw));
+  } catch (e) {}
+  return sampleData();
+}
+function migrate(o) {
+  const b = blank();
+  const s = {...b, ...o, settings:{...b.settings, ...(o.settings||{})}};
+  if (s.settings.bizName === 'Soul Ark') s.settings.bizName = 'Soul Ark Scale'; // rebrand of earlier saved data
+  s.tasks.forEach(t => { t.cat = CAT_RENAME[t.cat] || t.cat; });
+  s.leads.forEach(l => { l.history = l.history || [{stage:l.stage, date:l.created || today()}]; l.created = l.created || l.history[0].date; });
+  if (s.settings.sample && !(o.expenses && o.expenses.length)) { const sm = sampleData(); s.expenses = sm.expenses; s.bills = sm.bills; } // older sample data had no spending
+  return s;
+}
+let storageOK = true;
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(S)); storageOK = true; }
+  catch (e) { if (storageOK) toast('Browser is blocking saving — use Settings → Export to keep your data'); storageOK = false; }
+}
+
+/* ---- sample data (so the dashboard looks alive on first open) ---- */
+function sampleData(keep) {
+  const t = today(), s = blank();
+  s.settings.sample = true;
+  if (keep) { s.settings = {...keep.settings, sample:true}; s.identity = keep.identity; s.nonneg = keep.nonneg; } // keep the personal bits (goal, identity, non-negotiables)
+  const hist = (final, createdAgo, lastAgo, lostFrom) => {
+    const path = ORDER.slice(0, ORDER.indexOf(final === 'lost' ? lostFrom : final) + 1);
+    const span = Math.max(createdAgo - lastAgo, 0);
+    const h = path.map((st, i) => ({stage:st, date:addDays(t, -(createdAgo - Math.round(span * i / Math.max(path.length - 1, 1))))}));
+    if (final === 'lost') h.push({stage:'lost', date:addDays(t, -lastAgo)});
+    return h;
+  };
+  const L = (name, handle, source, stage, value, lastAgo, nextIn, notes, createdAgo, extra = {}) => {
+    const l = {id:uid(), name, handle, source, stage, value, lastContact:addDays(t, -lastAgo),
+      nextFollowUp: nextIn === null ? '' : addDays(t, nextIn), notes, created:addDays(t, -createdAgo),
+      history:hist(stage, createdAgo, lastAgo, extra.lostFrom), ...extra};
+    delete l.lostFrom;
+    if (stage === 'won') l.wonDate = addDays(t, -lastAgo);
+    s.leads.push(l); return l;
+  };
+  L('Ryan M.','@ryan.m.fit','Instagram DM','decide',997,4,-1,'Needs to speak to his wife. Very keen.',12);
+  L('Tom A.','@tomafield','Webinar','decide',997,2,1,'Great call — asked about payment plan',9);
+  L('Josh P.','@joshp_','Instagram DM','booked',997,1,2,'Call booked Tue 4pm',6);
+  L('Mike D.','@mikedaniels','YouTube','booked',997,0,3,'',5);
+  L('Andy K.','@andyk','Instagram DM','convo',997,5,-2,'Struggling with purpose. Went quiet after last msg.',10);
+  L('Sam L.','@samlowe','Instagram DM','convo',997,1,1,'',3);
+  L('Dave R.','@dave_r','YouTube','convo',997,6,null,'Watched 3 videos, asked about price',14);
+  L('Kyle B.','@kyleb','Circle community','convo',997,2,0,'Free member, active in Reality Check',8);
+  L('Luis G.','@luisg','Instagram DM','dm',997,3,null,'Replied to story',3);
+  L('Chris N.','@chrisn','Referral','dm',997,0,2,'Referred by Marcus',1);
+  L('Ed T.','@edt','Webinar','dm',997,7,-3,'Attended webinar live',10);
+  const won = [
+    ['Marcus T.','@marcus.t','Instagram DM',21,30],['Daniel R.','@danr','Webinar',8,16],['Chris W.','@chriswill','YouTube',36,50],
+    ['Jonny B.','@jonnyb','Instagram DM',2,9],['Ben H.','@benh','Instagram DM',75,90],['Luke S.','@lukes','Referral',58,70],
+  ].map(([n,h,src,wonAgo,cr]) => L(n,h,src,'won',997,wonAgo,null,'',cr));
+  L('Pete C.','@petec','Instagram DM','lost',997,25,null,'Said price was too high',30,{lostReason:'Price', lostFrom:'decide'});
+  L('Gary W.','@garyw','Webinar','lost',997,18,null,'',22,{lostReason:'Timing', lostFrom:'booked'});
+  L('Rob S.','@robs','YouTube','lost',997,12,null,'',20,{lostReason:'Ghosted', lostFrom:'convo'});
+
+  const cl = (lead, wonAgo, status, extra = {}) => {
+    const c = {id:uid(), name:lead.name, start:addDays(t, -wonAgo), price:997, status, health:'ok', nextSession:'', notes:'', testimonial:false, upsell:false, leadId:lead.id, ...extra};
+    s.clients.push(c); return c;
+  };
+  const [marcus, daniel, chrisW, jonny, ben, luke] = won;
+  const cM = cl(marcus,21,'active',{nextSession:addDays(t,2)});
+  const cD = cl(daniel,8,'active',{nextSession:addDays(t,1),notes:'Paying in instalments'});
+  const cC = cl(chrisW,36,'active',{health:'risk',upsell:true,notes:'Missed last session. Final week — ask about testimonial.'});
+  const cJ = cl(jonny,2,'active',{nextSession:addDays(t,4)});
+  const cB = cl(ben,75,'completed',{testimonial:true,upsell:true});
+  const cLk = cl(luke,58,'completed',{testimonial:true,upsell:true});
+  const mdate = (mAgo, day) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - mAgo); d.setDate(day); return iso(d); };
+  const pay = (date, who, amount, note, c) => s.payments.push({id:uid(), date, who, amount, note, clientId:c?.id || ''});
+  pay(mdate(3,12),'Pilot client',500,'Pilot mentorship');
+  pay(addDays(t,-75),'Ben H.',997,'6-week mentorship',cB);
+  pay(mdate(2,5),'Pilot client',750,'Pilot mentorship');
+  pay(addDays(t,-58),'Luke S.',997,'6-week mentorship',cLk);
+  pay(addDays(t,-36),'Chris W.',997,'6-week mentorship',cC);
+  pay(addDays(t,-21),'Marcus T.',997,'6-week mentorship',cM);
+  pay(addDays(t,-8),'Daniel R.',500,'Instalment 1',cD);
+  pay(addDays(t,-3),'Daniel R.',250,'Instalment 2',cD);
+  pay(addDays(t,-2),'Jonny B.',997,'6-week mentorship',cJ);
+
+  const T = (title, cat, due, pri, repeat = '', done = false) => s.tasks.push({id:uid(), title, cat, due:due === null ? '' : addDays(t, due), pri, repeat, done, doneAt:done ? t : ''});
+  T('Reply to every open Instagram DM','Client',0,'high','daily');
+  T("Send Daniel his week-2 check-in notes",'Client',0,'med');
+  T('Ask Ben H. for a testimonial video','Client',-1,'high');
+  T('Reply to new members in the Start Here space','Community',0,'med','daily');
+  T('Book a rest afternoon this week','Self',4,'low');
+  T("Film this week's YouTube video",'Content',2,'med');
+  T('Prep webinar slides','Content',3,'med');
+  T("Weekly review: numbers + next week's plan",'Admin',1,'med','weekly');
+  T('Outline the Scale Mentorship (2027 launch)','Admin',10,'low');
+  T('Post 3 Instagram stories','Content',0,'low','daily',true);
+
+  const dms = [18,22,25,12,20,26,9,21,24,20,17,23,19,11];
+  dms.forEach((n, i) => { s.daily[addDays(t, -(dms.length - 1 - i))] = {dms:n, content:i % 3 === 0 ? 0 : 1}; });
+
+  /* money out: monthly bills (paid up to today) + everyday spending */
+  [['Circle community',79,1,'Business & software'],['Canva',12,3,'Business & software'],['Phone',30,5,'Bills'],['Rent',700,1,'Bills'],['Email & webinar tools',25,12,'Business & software'],['Insurance',40,20,'Bills']]
+    .forEach(([name, amount, day, cat]) => s.bills.push({id:uid(), name, amount, day, cat}));
+  for (let m = 2; m >= 0; m--) s.bills.forEach(b => { const d = mdate(m, b.day); if (d <= t) s.expenses.push({id:uid(), date:d, amount:b.amount, cat:b.cat, note:b.name, billId:b.id}); });
+  const cats = ['Food','Transport','Food','Personal','Marketing','Food','Giving'];
+  const notes = {Food:'Food & coffee', Transport:'Fuel / transport', Personal:'Personal', Marketing:'Ads / boosts', Giving:'Tithe / giving'};
+  for (let i = 0; i < 60; i++) {
+    if (i % 9 === 4) continue;
+    const c = cats[i % 7];
+    s.expenses.push({id:uid(), date:addDays(t, -i), amount:[14,22,9,31,12,48,19][i % 7] + (i * 7) % 11, cat:c, note:notes[c], billId:''});
+  }
+  /* non-negotiable history so the streak shows */
+  const ids = s.nonneg.map(n => n.id);
+  for (let i = 1; i <= 4; i++) s.nonnegDone[addDays(t, -i)] = [...ids];
+  s.nonnegDone[addDays(t, -5)] = ids.slice(0, 3);
+  s.nonnegDone[t] = ids.slice(1, 3);
+  return s;
+}
+
+/* ================= metrics ================= */
+const openLeads = () => S.leads.filter(l => OPEN.includes(l.stage));
+const silent = l => diff(l.lastContact || l.created, today());
+const isStuck = l => OPEN.includes(l.stage) && (l.nextFollowUp ? l.nextFollowUp < today() : silent(l) >= S.settings.staleDays);
+const stuckLeads = () => openLeads().filter(isStuck);
+const dueLeads = () => openLeads().filter(l => l.nextFollowUp && l.nextFollowUp <= today());
+const monthRev = ym => sum(S.payments.filter(p => p.date.startsWith(ym)), 'amount');
+const activeClients = () => S.clients.filter(c => c.status === 'active');
+const clientPaid = c => sum(S.payments.filter(p => p.clientId === c.id), 'amount');
+const clientWeek = c => { const d = diff(c.start, today()); return d < 0 ? 0 : Math.floor(d / 7) + 1; };
+const dayLog = d => S.daily[d] || {dms:0, content:0};
+const autoCount = (date, stage) => S.leads.filter(l => l.history.some(h => h.date === date && h.stage === stage)).length;
+const dueTasks = () => S.tasks.filter(t => !t.done && t.due && t.due <= today());
+function streak() {
+  let d = today(), n = 0;
+  if (dayLog(d).dms < S.settings.dmTarget) d = addDays(d, -1);
+  while (dayLog(d).dms >= S.settings.dmTarget) { n++; d = addDays(d, -1); }
+  return n;
+}
+function bump(key, n) {
+  const d = today(); S.daily[d] = S.daily[d] || {dms:0, content:0};
+  S.daily[d][key] = Math.max(0, (S.daily[d][key] || 0) + n);
+  save(); render();
+}
+function reached(l, sid) {
+  const idx = ORDER.indexOf(sid);
+  return l.history.some(h => h.stage !== 'lost' && ORDER.indexOf(h.stage) >= idx);
+}
+
+/* ================= icons / ui bits ================= */
+const ICON = {
+  home:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
+  funnel:'<path d="M3 4h18l-7 8v6l-4 2v-8z"/>',
+  bell:'<path d="M6 8a6 6 0 0112 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 004 0"/>',
+  users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14a5 5 0 014.5 5"/>',
+  check:'<rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M8 12l3 3 5-6"/>',
+  pound:'<path d="M18 7a4 4 0 00-7.5 1.5V13m0 0H7m3.5 0v3.5c0 1.6-.8 2.9-2.5 3.5h10M10.5 13H15"/>',
+  trophy:'<path d="M8 4h8v6a4 4 0 01-8 0z"/><path d="M8 6H4v1a3 3 0 003 3M16 6h4v1a3 3 0 01-3 3"/><path d="M12 14v4M8 21h8M10 18h4"/>',
+  cog:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+};
+const svgI = k => `<svg viewBox="0 0 24 24">${ICON[k]}</svg>`;
+const TICK = '<svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>';
+const fld = (label, name, val = '', type = 'text', extra = '') => `<label class="fld"><span>${label}</span><input name="${name}" type="${type}" value="${esc(val)}" ${extra}></label>`;
+const sel = (label, name, opts, val) => `<label class="fld"><span>${label}</span><select name="${name}">${opts.map(o => { const [v, t] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}" ${v == val ? 'selected' : ''}>${esc(t)}</option>`; }).join('')}</select></label>`;
+const bar = (pct, cls = '') => `<div class="bar"><i class="${cls}" style="width:${Math.max(0, Math.min(100, pct))}%"></i></div>`;
+
+let toastT;
+function toast(msg) {
+  const el = $('#toast'); el.textContent = msg; el.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), 2600);
+}
+function modal(title, body) {
+  $('#modal').innerHTML = `<div class="mback" data-act="closeModal"><div class="mbox" role="dialog" aria-modal="true"><div class="mhead"><h3>${title}</h3><button class="x" data-act="closeModal" aria-label="Close">×</button></div>${body}</div></div>`;
+  const f = $('#modal input:not([type=hidden]):not([type=checkbox]), #modal select'); if (f) f.focus();
+}
+const closeModal = () => { $('#modal').innerHTML = ''; };
+
+/* ================= views ================= */
+const NAV = [['today','Today','home'],['pipeline','Pipeline','funnel'],['followups','Follow-ups','bell'],['clients','Clients','users'],['tasks','To-do','check'],['revenue','Money','pound'],['proof','Proof Engine','trophy'],['settings','Settings','cog']];
+let view = (location.hash || '').replace('#', '') || 'today';
+if (!NAV.some(n => n[0] === view)) view = 'today';
+let proofRange = 90, taskFilter = 'All';
+
+function renderSide() {
+  const st = S.settings, rev = monthRev(monthKey()), due = dueLeads().length + stuckLeads().filter(l => !dueLeads().includes(l)).length, tk = dueTasks().length;
+  const initials = st.bizName.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  $('#side').innerHTML = `
+    <div class="brand"><div class="mono">${esc(initials)}</div><div><b>${esc(st.bizName)}</b><small>Command Centre</small></div></div>
+    <nav class="nav">${NAV.map(([id, label, ic]) => {
+      const badge = id === 'followups' && due ? `<span class="badge">${due}</span>` : id === 'tasks' && tk ? `<span class="badge gold">${tk}</span>` : '';
+      return `<button class="${view === id ? 'on' : ''}" data-act="go" data-v="${id}">${svgI(ic)}${label}${badge}</button>`;
+    }).join('')}</nav>
+    <div class="sidefoot"><small>${new Date().toLocaleDateString('en-GB',{month:'long'})} goal</small><b>${gbp(rev)}</b> <span class="sub">/ ${gbp(st.target)}</span>${bar(rev / st.target * 100)}</div>`;
+}
+
+function render() {
+  renderSide();
+  const fn = {today:vToday, pipeline:vPipeline, followups:vFollow, clients:vClients, tasks:vTasks, revenue:vRevenue, proof:vProof, settings:vSettings}[view];
+  const banner = S.settings.sample ? `<div class="banner"><span><b>You're looking at sample data</b> — so you can see how everything works.</span><button class="btn sm" data-act="clearSample">Clear it &amp; start fresh</button></div>` : '';
+  $('#main').innerHTML = banner + fn();
+}
+function go(v) { view = v; location.hash = v; render(); window.scrollTo(0, 0); }
+
+/* ---------- TODAY ---------- */
+function leadRow(l) {
+  const sl = silent(l);
+  const why = l.nextFollowUp ? (l.nextFollowUp < today() ? `follow-up ${rel(l.nextFollowUp)}` : `follow-up ${rel(l.nextFollowUp)}`) : `silent ${sl} days`;
+  return `<div class="row"><div class="grow"><b>${esc(l.name)}</b> <span class="chip" data-s="${l.stage}">${stageLabel(l.stage)}</span>
+    <div class="sub">${esc(l.source)} · ${why}${l.notes ? ' · ' + esc(l.notes) : ''}</div></div>
+    <span class="val">${gbp(l.value)}</span>
+    <button class="btn sm good" data-act="chased" data-id="${l.id}">Chased</button>
+    <button class="btn sm ghost" data-act="editLead" data-id="${l.id}">Open</button></div>`;
+}
+function taskRow(t) {
+  const over = t.due && t.due < today();
+  return `<div class="row"><button class="tick ${t.done ? 'done' : ''}" data-act="toggleTask" data-id="${t.id}" aria-label="Complete">${TICK}</button>
+    <div class="grow"><span class="${t.done ? 'done-t' : ''}">${esc(t.title)}</span>
+    <div class="sub">${t.cat}${t.repeat ? ' · repeats ' + t.repeat : ''}${t.due ? ` · <span style="color:${over && !t.done ? 'var(--bad)' : 'inherit'}">${rel(t.due)}</span>` : ''}</div></div>
+    <span class="pri" style="background:${PRI_COL[t.pri]}" title="${t.pri} priority"></span>
+    <button class="x" data-act="delTask" data-id="${t.id}" aria-label="Delete task">×</button></div>`;
+}
+const fdateL = s => parse(s).toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric'});
+const isDone = id => (S.nonnegDone[today()] || []).includes(id);
+function nnStreak() {
+  const ids = S.nonneg.map(i => i.id); if (!ids.length) return 0;
+  const ok = d => ids.every(id => (S.nonnegDone[d] || []).includes(id));
+  let d = today(), n = 0;
+  if (!ok(d)) d = addDays(d, -1);
+  while (ok(d) && n < 3650) { n++; d = addDays(d, -1); }
+  return n;
+}
+function nnToggle(id) {
+  const t = today(), a = S.nonnegDone[t] = S.nonnegDone[t] || [], i = a.indexOf(id);
+  if (i >= 0) a.splice(i, 1); else a.push(id);
+  save(); render();
+  if (S.nonneg.length && S.nonneg.every(n => a.includes(n.id))) toast('All non-negotiables done. You did what you said you would do. 💪');
+}
+function goalCard() {
+  const st = S.settings, left = diff(today(), st.goalDeadline), rev = monthRev(monthKey());
+  const cls = left < 0 ? 'bad' : left <= 14 ? 'warn' : '';
+  const label = left < 0 ? 'deadline passed' : left === 0 ? 'last day. Finish it.' : left === 1 ? 'day left' : 'days left';
+  return `<div class="card"><h2>My goal <button class="btn sm ghost" data-act="editGoal">Edit</button></h2>
+    <div class="gnum ${cls}">${Math.max(0, left)}</div><div class="glabel">${label}${left > 13 ? ` · about ${Math.round(left / 7)} weeks` : ''}</div>
+    <div class="gtitle">${esc(st.goalTitle)}</div><div class="sub">Deadline: ${fdateL(st.goalDeadline)}</div>
+    <div style="display:flex;justify-content:space-between;margin-top:14px"><span class="sub">Cash this month</span><b>${gbp(rev)} <span class="sub">/ ${gbp(st.target)}</span></b></div>${bar(rev / st.target * 100)}</div>`;
+}
+function identityCard() {
+  const read = S.nonneg.find(n => n.key === 'identity'), isRead = read && isDone(read.id);
+  return `<div class="card ident"><h2><span>Who I am ${S.identity === DEFAULT_IDENTITY ? '<span class="chip warn">Draft — make it yours</span>' : ''}</span><button class="btn sm ghost" data-act="editIdentity">Edit</button></h2>
+    <div class="idtext">${esc(S.identity).replace(/\n/g, '<br>')}</div>
+    ${read ? `<button class="btn ${isRead ? 'good' : ''}" data-act="nnToggle" data-id="${read.id}">${isRead ? '✓ Read aloud today' : 'I’ve read it aloud'}</button>` : ''}</div>`;
+}
+function nnCard() {
+  const done = S.nonneg.filter(n => isDone(n.id)).length, total = S.nonneg.length, sk = nnStreak();
+  return `<div class="card" style="margin-bottom:16px"><h2>My daily non-negotiables <small>${done} / ${total} done today · ${sk ? sk + '-day streak' : 'complete all of them to start a streak'}</small></h2>
+    ${bar(total ? done / total * 100 : 0, done === total && total ? 'g' : '')}
+    <div class="nnl" style="margin-top:6px">${S.nonneg.map(n => `<div class="row"><button class="tick ${isDone(n.id) ? 'done' : ''}" data-act="nnToggle" data-id="${n.id}" aria-label="Done">${TICK}</button>
+      <div class="grow ${isDone(n.id) ? 'done-t' : ''}"><b style="font-weight:600">${esc(n.title)}</b></div><button class="x" data-act="nnDel" data-id="${n.id}" aria-label="Remove">×</button></div>`).join('') || '<div class="empty">Add the things you will do every day, no matter what.</div>'}</div>
+    <form data-form="nn" class="inline" style="margin-top:12px"><input name="title" placeholder="Add a non-negotiable…" required><button class="btn sm">Add</button></form></div>`;
+}
+function vToday() {
+  const t = today(), st = S.settings, rev = monthRev(monthKey());
+  const stuck = stuckLeads(), stuckVal = sum(stuck, 'value');
+  const open = openLeads(), pipe = sum(open, 'value'), wtd = open.reduce((a, l) => a + l.value * prob(l.stage), 0);
+  const act = activeClients(), ending = act.filter(c => clientWeek(c) >= 6).length;
+  const now = new Date(), dom = now.getDate(), dim = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const proj = rev / dom * dim, need = Math.ceil(Math.max(0, st.target - rev) / st.offerPrice);
+  const chase = [...new Set([...stuck, ...dueLeads()])].sort((a, b) => b.value - a.value).slice(0, 6);
+  const chaseTotal = new Set([...stuck, ...dueLeads()]).size;
+  const tasks = S.tasks.filter(x => !x.done && x.due && x.due <= t).sort((a, b) => a.due.localeCompare(b.due));
+  const doneToday = S.tasks.filter(x => x.done && x.doneAt === t);
+  const hr = now.getHours(), greet = hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening';
+  const log = dayLog(t);
+  const score = [
+    ['DMs sent', log.dms || 0, st.dmTarget, 'dms'],
+    ['Conversations started', autoCount(t, 'convo'), st.convoTarget, null],
+    ['Calls booked', autoCount(t, 'booked'), st.callTarget, null],
+    ['Content posted', log.content || 0, st.contentTarget, 'content'],
+  ];
+  const days = [...Array(7)].map((_, i) => addDays(t, i - 6));
+  const sk = streak();
+  const wk = act.filter(c => c.nextSession && diff(t, c.nextSession) >= 0 && diff(t, c.nextSession) <= 7 || c.health === 'risk' || clientWeek(c) >= 6)
+    .sort((a, b) => (b.health === 'risk') - (a.health === 'risk'));
+  return `
+  <div class="top"><div><h1>${greet}, ${esc(st.ownerName)}</h1><p>${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p></div>
+    <div class="acts"><button class="btn" data-act="newLead">+ Lead</button><button class="btn ghost" data-act="newPayment">+ Payment</button><button class="btn ghost" data-act="newExpense">+ Spend</button><button class="btn ghost" data-act="newClient">+ Client</button></div></div>
+  <div class="grid" style="margin-bottom:16px">${identityCard()}${goalCard()}</div>
+  ${nnCard()}
+  <div class="kpis">
+    <div class="kpi"><div class="l">Cash this month</div><div class="v">${gbp(rev)}</div><div class="s">${Math.round(rev / st.target * 100)}% of ${gbp(st.target)} goal</div>${bar(rev / st.target * 100)}</div>
+    <button class="kpi ${stuckVal ? 'alert' : ''}" data-act="go" data-v="followups"><div class="l">Money stuck in chats</div><div class="v">${gbp(stuckVal)}</div><div class="s">${stuck.length} ${stuck.length === 1 ? 'person' : 'people'} waiting on you</div></button>
+    <button class="kpi" data-act="go" data-v="pipeline"><div class="l">Open pipeline</div><div class="v">${gbp(pipe)}</div><div class="s">${gbp(wtd)} likely · ${open.length} leads</div></button>
+    <button class="kpi" data-act="go" data-v="clients"><div class="l">Active clients</div><div class="v">${act.length}</div><div class="s">${ending ? ending + ' finishing now' : 'in the 6-week programme'}</div></button>
+    <div class="kpi"><div class="l">Month forecast</div><div class="v">${gbp(proj)}</div><div class="s">${need ? `Need ${need} more client${need > 1 ? 's' : ''} to hit goal` : 'Goal hit 🎯'}</div></div>
+  </div>
+  <div class="grid">
+    <div class="stack">
+      <div class="card"><h2>Chase these first <small>${chaseTotal > 6 ? `top 6 of ${chaseTotal} · ` : ''}biggest money first</small></h2>
+        ${chase.length ? chase.map(leadRow).join('') : '<div class="empty">Nobody waiting on you. Go start new conversations.</div>'}
+        ${chaseTotal > 6 ? '<div style="margin-top:8px"><button class="btn sm ghost" data-act="go" data-v="followups">See all follow-ups</button></div>' : ''}</div>
+      <div class="card"><h2>Today's to-do <small>${tasks.length} left · ${doneToday.length} done</small></h2>
+        ${tasks.map(taskRow).join('') || '<div class="empty">All clear. Nice work.</div>'}
+        <form data-form="task" class="inline" style="margin-top:12px"><input type="hidden" name="cat" value="Admin"><input type="hidden" name="due" value="${t}"><input type="hidden" name="pri" value="med">
+          <input name="title" placeholder="Add a task for today…" required><button class="btn sm">Add</button></form></div>
+    </div>
+    <div class="stack">
+      <div class="card"><h2>Daily scorecard <small>${sk ? `${sk}-day DM streak` : 'hit your DM target to start a streak'}</small></h2>
+        ${score.map(([label, v, tgt, key]) => `<div class="sc"><div class="grow"><b>${label}</b>${bar(v / tgt * 100, v >= tgt ? 'g' : '')}</div>
+          ${key ? `<button class="pm" data-act="bump" data-k="${key}" data-n="-1" aria-label="minus">−</button>` : ''}
+          <div class="n">${v}<small> / ${tgt}</small></div>
+          ${key ? `<button class="pm" data-act="bump" data-k="${key}" data-n="1" aria-label="plus">+</button>${key === 'dms' ? `<button class="pm" data-act="bump" data-k="dms" data-n="5" style="width:auto;padding:0 8px;font-size:12px">+5</button>` : ''}` : '<span class="sub" style="min-width:56px">auto</span>'}</div>`).join('')}
+        <div class="sec" style="margin-top:14px">DMs · last 7 days</div>
+        <div class="mini">${days.map(d => { const n = dayLog(d).dms || 0; return `<div title="${fdate(d)}: ${n} DMs"><i class="${n < st.dmTarget ? 'lo' : ''}" style="height:${Math.min(100, n / (st.dmTarget * 1.3) * 100)}%"></i>${parse(d).toLocaleDateString('en-GB',{weekday:'narrow'})}</div>`; }).join('')}</div></div>
+      <div class="card"><h2>Clients needing you <small>this week</small></h2>
+        ${wk.length ? wk.map(c => `<div class="row"><div class="grow"><b>${esc(c.name)}</b> ${c.health === 'risk' ? '<span class="chip bad">At risk</span>' : ''}${clientWeek(c) >= 6 ? ' <span class="chip warn">Final week</span>' : ''}
+          <div class="sub">Week ${Math.min(clientWeek(c), 6)} of 6${c.nextSession ? ' · session ' + rel(c.nextSession) : ''}</div></div><button class="btn sm ghost" data-act="editClient" data-id="${c.id}">Open</button></div>`).join('') : '<div class="empty">Nothing urgent.</div>'}</div>
+    </div>
+  </div>`;
+}
+
+/* ---------- PIPELINE ---------- */
+function vPipeline() {
+  const open = openLeads();
+  const cols = STAGES.map(s => {
+    let ls = S.leads.filter(l => l.stage === s.id);
+    if (OPEN.includes(s.id)) ls.sort((a, b) => isStuck(b) - isStuck(a) || b.value - a.value);
+    else ls = ls.sort((a, b) => b.history.slice(-1)[0].date.localeCompare(a.history.slice(-1)[0].date));
+    const shown = ls.slice(0, 12);
+    return `<div class="kcol" data-stage="${s.id}"><div class="khead"><b>${s.label}</b><small>${ls.length} · ${gbp(sum(ls, 'value'))}</small></div>
+      ${shown.map(l => card(l)).join('') || '<div class="sub" style="text-align:center;padding:14px 0">Empty</div>'}
+      ${ls.length > shown.length ? `<div class="sub" style="text-align:center">+ ${ls.length - shown.length} older</div>` : ''}</div>`;
+  }).join('');
+  return `<div class="top"><div><h1>Pipeline</h1><p>${open.length} open · ${gbp(sum(open, 'value'))} potential · drag cards between columns</p></div>
+    <div class="acts"><button class="btn" data-act="newLead">+ Add lead</button></div></div><div class="kan">${cols}</div>`;
+}
+function card(l) {
+  const isOpen = OPEN.includes(l.stage), sl = silent(l);
+  return `<div class="lcard ${isStuck(l) ? 'stuck' : ''}" draggable="true" data-lead="${l.id}" data-act="editLead" data-id="${l.id}">
+    <div class="t"><b>${esc(l.name)}</b><span class="val">${gbp(l.value)}</span></div>
+    <div class="sub">${esc(l.handle || '')}${l.handle ? ' · ' : ''}${esc(l.source)}</div>
+    <div class="m">${isOpen ? `<span class="chip ${sl >= S.settings.staleDays ? 'bad' : ''}">${sl === 0 ? 'contacted today' : sl + 'd silent'}</span>` : ''}
+      ${l.nextFollowUp && isOpen ? `<span class="chip ${l.nextFollowUp < today() ? 'bad' : l.nextFollowUp === today() ? 'warn' : ''}">follow-up ${rel(l.nextFollowUp)}</span>` : ''}
+      ${l.stage === 'lost' && l.lostReason ? `<span class="chip bad">${esc(l.lostReason)}</span>` : ''}</div>
+    ${isOpen ? `<div class="a"><button data-act="step" data-id="${l.id}" data-dir="-1" aria-label="Back a stage">‹</button><button class="ch" data-act="chased" data-id="${l.id}">Chased</button><button data-act="step" data-id="${l.id}" data-dir="1" aria-label="Forward a stage">›</button></div>` : ''}</div>`;
+}
+
+/* ---------- FOLLOW-UPS ---------- */
+function fuRow(l) {
+  const sl = silent(l);
+  return `<div class="row"><div class="grow"><b>${esc(l.name)}</b> <span class="chip" data-s="${l.stage}">${stageLabel(l.stage)}</span>
+    <div class="sub">${esc(l.source)} · last contact ${sl === 0 ? 'today' : sl + ' days ago'}${l.nextFollowUp ? ' · due ' + rel(l.nextFollowUp) : ''}</div>
+    ${l.notes ? `<div class="sub" style="color:var(--dim)">${esc(l.notes)}</div>` : ''}</div>
+    <span class="val">${gbp(l.value)}</span>
+    <button class="btn sm good" data-act="chased" data-id="${l.id}">Chased</button>
+    <button class="btn sm ghost" data-act="snooze" data-id="${l.id}" data-n="1">+1d</button>
+    <button class="btn sm ghost" data-act="editLead" data-id="${l.id}">Open</button></div>`;
+}
+function vFollow() {
+  const t = today(), open = openLeads().sort((a, b) => b.value - a.value);
+  const over = open.filter(l => l.nextFollowUp && l.nextFollowUp < t);
+  const todayL = open.filter(l => l.nextFollowUp === t);
+  const soon = open.filter(l => l.nextFollowUp > t && l.nextFollowUp <= addDays(t, 7)).sort((a, b) => a.nextFollowUp.localeCompare(b.nextFollowUp));
+  const nodate = open.filter(l => !l.nextFollowUp);
+  const sec = (cls, title, ls) => ls.length ? `<div class="sec ${cls}">${title} · ${ls.length} · ${gbp(sum(ls, 'value'))}</div>${ls.map(fuRow).join('')}` : '';
+  const stuckVal = sum(stuckLeads(), 'value');
+  return `<div class="top"><div><h1>Follow-ups</h1><p>${stuckVal ? `<b style="color:#FF8B8B">${gbp(stuckVal)}</b> is stuck in conversations right now. Every chase below is potential revenue.` : 'Nothing slipping through the cracks.'}</p></div></div>
+    <div class="grid"><div class="card">
+      ${sec('bad', 'Overdue', over)}${sec('gold', 'Due today', todayL)}${sec('', 'Next 7 days', soon)}${sec('', 'No follow-up date set (these go cold)', nodate)}
+      ${open.length ? '' : '<div class="empty">No open leads. Add some from the Pipeline.</div>'}</div>
+    <div class="card"><h2>Message scripts <small>tap to copy</small></h2>
+      ${TEMPLATES.map(([name, txt], i) => `<div class="tmpl"><b>${name}</b><p>${esc(txt)}</p><button class="btn sm ghost" data-act="copyTmpl" data-i="${i}">Copy</button></div>`).join('')}</div></div>`;
+}
+
+/* ---------- CLIENTS ---------- */
+function vClients() {
+  const act = activeClients(), done = S.clients.filter(c => c.status !== 'active');
+  const owed = sum(act, c => Math.max(0, c.price - clientPaid(c)));
+  const tm = S.clients.filter(c => c.testimonial).length;
+  const cardC = c => {
+    const w = clientWeek(c), paid = clientPaid(c), end = addDays(c.start, 41);
+    return `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><div><b style="font:600 16px var(--head)">${esc(c.name)}</b><div class="sub">Started ${fdate(c.start)}</div></div>
+      <div style="text-align:right">${c.health === 'risk' ? '<span class="chip bad">At risk</span>' : '<span class="chip good">On track</span>'}</div></div>
+      <div class="weeks">${[1,2,3,4,5,6].map(i => `<i class="${i < w ? 'd' : i === w ? 'n' : ''}"></i>`).join('')}</div>
+      <div class="sub">${w === 0 ? 'Starts ' + rel(c.start) : w > 6 ? 'Programme finished — mark as completed' : `Week ${w} of 6 · ends ${fdate(end)}`}</div>
+      <div style="margin-top:12px;display:flex;justify-content:space-between"><span class="sub">Paid</span><b>${gbp(paid)} <span class="sub">/ ${gbp(c.price)}</span></b></div>${bar(paid / c.price * 100, paid >= c.price ? 'g' : '')}
+      ${c.nextSession ? `<div class="sub" style="margin-top:10px">Next session: ${fdate(c.nextSession)} (${rel(c.nextSession)})</div>` : ''}
+      ${c.notes ? `<div class="sub" style="margin-top:6px;color:var(--text)">${esc(c.notes)}</div>` : ''}
+      <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">${c.testimonial ? '<span class="chip good">Testimonial ✓</span>' : ''}${c.upsell ? '<span class="chip warn">Upsell candidate</span>' : ''}<button class="btn sm ghost" style="margin-left:auto" data-act="editClient" data-id="${c.id}">Edit</button></div></div>`;
+  };
+  return `<div class="top"><div><h1>Clients</h1><p>${act.length} active · ${gbp(owed)} still to collect · ${tm} testimonial${tm === 1 ? '' : 's'} banked</p></div>
+    <div class="acts"><button class="btn" data-act="newClient">+ Add client</button></div></div>
+    ${act.length ? `<div class="cgrid">${act.map(cardC).join('')}</div>` : '<div class="card empty">No active clients yet. Win a lead in the pipeline, or add one manually.</div>'}
+    ${done.length ? `<div class="sec" style="margin-top:28px">Past clients — your testimonials, referrals and next-offer list</div>
+    <div class="card"><table><tr><th>Client</th><th>Started</th><th>Paid</th><th>Testimonial</th><th>Upsell</th><th></th></tr>
+    ${done.map(c => `<tr><td><b>${esc(c.name)}</b></td><td>${fdate(c.start)}</td><td>${gbp(clientPaid(c))}</td><td>${c.testimonial ? '<span class="chip good">Yes</span>' : '<span class="chip">Not yet</span>'}</td><td>${c.upsell ? '<span class="chip warn">Yes</span>' : '—'}</td><td class="r"><button class="btn sm ghost" data-act="editClient" data-id="${c.id}">Edit</button></td></tr>`).join('')}</table></div>` : ''}`;
+}
+
+/* ---------- TASKS ---------- */
+function vTasks() {
+  const t = today();
+  let ts = S.tasks.filter(x => taskFilter === 'All' || x.cat === taskFilter);
+  const pend = ts.filter(x => !x.done);
+  const byDue = (a, b) => a.due.localeCompare(b.due) || ['high','med','low'].indexOf(a.pri) - ['high','med','low'].indexOf(b.pri);
+  const grp = [
+    ['bad', 'Overdue', pend.filter(x => x.due && x.due < t).sort(byDue)],
+    ['gold', 'Today', pend.filter(x => x.due === t)],
+    ['', 'Upcoming', pend.filter(x => x.due > t).sort(byDue)],
+    ['', 'Someday', pend.filter(x => !x.due)],
+    ['', 'Done recently', ts.filter(x => x.done).sort((a, b) => (b.doneAt || '').localeCompare(a.doneAt || '')).slice(0, 8)],
+  ];
+  return `<div class="top"><div><h1>To-do</h1><p>${S.tasks.filter(x => !x.done).length} open tasks</p></div>
+    <div class="seg">${['All', ...CATS].map(c => `<button class="${taskFilter === c ? 'on' : ''}" data-act="taskFilter" data-c="${c}">${c}</button>`).join('')}</div></div>
+    <div class="card" style="margin-bottom:16px"><form data-form="task" class="inline">
+      <input name="title" placeholder="What needs doing?" required>
+      <select name="cat">${CATS.map(c => `<option>${c}</option>`).join('')}</select>
+      <input name="due" type="date" value="${t}">
+      <select name="pri"><option value="med">Medium</option><option value="high">High</option><option value="low">Low</option></select>
+      <select name="repeat"><option value="">No repeat</option><option value="daily">Daily</option><option value="weekly">Weekly</option></select>
+      <button class="btn">Add</button></form></div>
+    <div class="card">${grp.map(([cls, title, l]) => l.length ? `<div class="sec ${cls}">${title} · ${l.length}</div>${l.map(taskRow).join('')}` : '').join('') || '<div class="empty">Nothing here.</div>'}</div>`;
+}
+
+/* ---------- MONEY (in + out) ---------- */
+let spendMode = 'everyday';
+const isBillPay = e => !!e.billId || e.cat === 'Bills';
+const billPaid = b => S.expenses.some(e => e.billId === b.id && e.date.startsWith(monthKey()));
+const spendDay = (d, all) => sum(S.expenses.filter(e => e.date === d && (all || !isBillPay(e))), 'amount');
+const ord = n => n + ([11, 12, 13].includes(n) ? 'th' : ({1:'st', 2:'nd', 3:'rd'}[n % 10] || 'th'));
+
+function vRevenue() {
+  const st = S.settings, ym = monthKey(), t = today();
+  const rev = monthRev(ym), last = monthRev(monthKey(-1));
+  const now = new Date(), dom = now.getDate(), dim = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const proj = rev / dom * dim;
+  const monthExp = S.expenses.filter(e => e.date.startsWith(ym));
+  const out = sum(monthExp, 'amount'), net = rev - out;
+  const everyday = sum(monthExp.filter(e => !isBillPay(e)), 'amount'), avg = everyday / dom;
+  const unpaid = S.bills.filter(b => !billPaid(b)), unpaidSum = sum(unpaid, 'amount');
+
+  /* revenue chart */
+  const months = [-5,-4,-3,-2,-1,0].map(o => { const k = monthKey(o); return {k, v:monthRev(k)}; });
+  const mx = Math.max(st.target, ...months.map(m => m.v)) * 1.08;
+  const pays = [...S.payments].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8);
+
+  /* daily spending chart (last 30 days) */
+  const all = spendMode === 'all';
+  const days = [...Array(30)].map((_, i) => addDays(t, i - 29));
+  const vals = days.map(d => spendDay(d, all));
+  const avg7 = vals.map((_, i) => { const w = vals.slice(Math.max(0, i - 6), i + 1); return w.reduce((a, b) => a + b, 0) / w.length; });
+  const smx = Math.max(...vals, ...avg7, 1) * 1.1;
+  const wk = sum(vals.slice(23), x => x), prev = sum(vals.slice(16, 23), x => x);
+  const pct = prev ? Math.round((wk - prev) / prev * 100) : null;
+  const trend = pct === null ? 'Not enough data yet to compare weeks.' : pct > 0 ? `<span class="chip warn">▲ ${pct}% more</span> than the week before` : pct < 0 ? `<span class="chip good">▼ ${-pct}% less</span> than the week before` : 'Same as the week before';
+  const pts = avg7.map((v, i) => `${((i + .5) / 30 * 100).toFixed(2)},${(100 - v / smx * 100).toFixed(2)}`).join(' ');
+
+  /* category split */
+  const byCat = {}; monthExp.forEach(e => { byCat[e.cat] = (byCat[e.cat] || 0) + e.amount; });
+  const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+
+  /* bills */
+  const billRow = b => {
+    const paid = billPaid(b), due = `${ym}-${pad(Math.min(b.day, dim))}`, dd = diff(t, due);
+    const chip = paid ? '<span class="chip good">Paid ✓</span>' : dd < 0 ? `<span class="chip bad">${-dd} days overdue</span>` : dd <= 3 ? `<span class="chip warn">due ${rel(due)}</span>` : `<span class="chip">due in ${dd} days</span>`;
+    return `<div class="row"><div class="grow"><b>${esc(b.name)}</b><div class="sub">${gbp(b.amount)} · ${ord(b.day)} of each month</div></div>${chip}
+      <button class="btn sm ${paid ? 'ghost' : 'good'}" data-act="billPay" data-id="${b.id}">${paid ? 'Undo' : 'Mark paid'}</button>
+      <button class="btn sm ghost" data-act="editBill" data-id="${b.id}">Edit</button></div>`;
+  };
+
+  return `<div class="top"><div><h1>Money</h1><p>Everything coming in, everything going out, and where it's heading.</p></div>
+    <div class="acts"><button class="btn" data-act="newPayment">+ Money in</button><button class="btn ghost" data-act="newExpense">+ Money out</button><button class="btn ghost" data-act="newBill">+ Bill</button></div></div>
+  <div class="kpis">
+    <div class="kpi"><div class="l">Money in · ${mname(ym)}</div><div class="v">${gbp(rev)}</div><div class="s">${Math.round(rev / st.target * 100)}% of ${gbp(st.target)} goal</div>${bar(rev / st.target * 100)}</div>
+    <div class="kpi"><div class="l">Money out · ${mname(ym)}</div><div class="v">${gbp(out)}</div><div class="s">${monthExp.length} payments</div></div>
+    <div class="kpi ${net < 0 ? 'alert' : ''}"><div class="l">Left over this month</div><div class="v" style="${net >= 0 ? 'color:var(--good)' : ''}">${gbp(net)}</div><div class="s">${net >= 0 ? 'in profit' : 'spending more than you earn'}</div></div>
+    <div class="kpi"><div class="l">Bills still to pay</div><div class="v">${gbp(unpaidSum)}</div><div class="s">${unpaid.length} of ${S.bills.length} bills</div></div>
+    <div class="kpi"><div class="l">Average daily spend</div><div class="v">${gbp(avg)}</div><div class="s">${gbp(avg * dim)} on pace for the month</div></div>
+    <div class="kpi"><div class="l">Income on pace for</div><div class="v">${gbp(proj)}</div><div class="s">${last ? 'last month ' + gbp(last) : 'at today’s run rate'}</div></div>
+  </div>
+
+  <div class="sec gold">Money in</div>
+  <div class="grid" style="margin-top:8px">
+    <div class="card"><h2>Income, last 6 months <small>dashed line = ${gbp(st.target)}/month goal</small></h2>
+      <div class="chart"><div class="tl" style="bottom:${st.target / mx * (210 - 26)}px"><span>Goal</span></div>
+      ${months.map((m, i) => `<div class="col ${i === 5 ? 'cur' : ''}" title="${mname(m.k)}: ${gbp(m.v)}"><b>${gbp(m.v)}</b><i style="height:${m.v / mx * (210 - 54)}px"></i></div>`).join('')}</div>
+      <div class="xl">${months.map(m => `<span>${mname(m.k)}</span>`).join('')}</div></div>
+    <div class="card"><h2>Latest payments in</h2>${pays.length ? `<table>${pays.map(p => `<tr><td><b>${esc(p.who)}</b><div class="sub">${fdate(p.date)}${p.note ? ' · ' + esc(p.note) : ''}</div></td><td class="r val">${gbp(p.amount)}</td><td class="r"><button class="x" data-act="delPay" data-id="${p.id}" aria-label="Delete payment">×</button></td></tr>`).join('')}</table>` : '<div class="empty">No payments logged yet.</div>'}</div>
+  </div>
+
+  <div class="sec" style="margin-top:26px">Money out</div>
+  <div class="grid" style="margin-top:8px">
+    <div class="card"><h2>Spending log <small>everything that leaves your account</small></h2>
+      <form data-form="expense" class="inline" style="margin-bottom:12px">
+        <input name="amount" type="number" min="0.01" step="0.01" placeholder="£ amount" required style="flex:1;min-width:90px">
+        <select name="cat">${EXP_CATS.map(c => `<option>${c}</option>`).join('')}</select>
+        <input name="note" placeholder="What was it?" style="flex:2;min-width:130px">
+        <input name="date" type="date" value="${t}">
+        <button class="btn">Add</button></form>
+      ${S.expenses.length ? `<table>${[...S.expenses].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 14).map(e => `<tr><td>${fdate(e.date)}</td><td><span class="chip">${esc(e.cat)}</span></td><td class="sub">${esc(e.note || '')}</td><td class="r"><b>${gbp(e.amount)}</b></td><td class="r"><button class="x" data-act="delExp" data-id="${e.id}" aria-label="Delete">×</button></td></tr>`).join('')}</table>` : '<div class="empty">Nothing logged yet. Log every pound that goes out.</div>'}</div>
+    <div class="stack">
+      <div class="card"><h2>Monthly bills <small>${gbp(sum(S.bills, 'amount'))} / month · ${gbp(unpaidSum)} left to pay</small></h2>
+        ${[...S.bills].sort((a, b) => a.day - b.day).map(billRow).join('') || '<div class="empty">Add your recurring bills: rent, software, phone…</div>'}
+        <div style="margin-top:10px"><button class="btn sm ghost" data-act="newBill">+ Add bill</button></div></div>
+      <div class="card"><h2>Where it went <small>${mname(ym)} so far</small></h2>
+        ${cats.length ? cats.map(([c, v]) => `<div class="catrow"><span>${esc(c)}</span>${bar(v / cats[0][1] * 100)}<b style="text-align:right">${gbp(v)} <span class="sub">${Math.round(v / out * 100)}%</span></b></div>`).join('') : '<div class="empty">No spending this month.</div>'}</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px"><h2>Daily spending, last 30 days
+      <span class="seg"><button class="${!all ? 'on' : ''}" data-act="spendMode" data-m="everyday">Everyday spending</button><button class="${all ? 'on' : ''}" data-act="spendMode" data-m="all">Including bills</button></span></h2>
+    <div class="sub">Last 7 days: <b style="color:var(--text)">${gbp(wk)}</b> · ${trend}</div>
+    <div class="dchart"><span class="ym">${gbp(smx)}</span>
+      ${days.map((d, i) => `<div class="dc ${i === 29 ? 'cur' : ''}" title="${fdate(d)}: ${gbp(vals[i])} (7-day avg ${gbp(avg7[i])})"><i style="height:${vals[i] / smx * 100}%"></i></div>`).join('')}
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polyline vector-effect="non-scaling-stroke" points="${pts}"/></svg></div>
+    <div class="dx">${days.map((d, i) => (29 - i) % 5 === 0 ? `<span>${parse(d).getDate()} ${mname(d.slice(0, 7))}</span>` : '<span></span>').join('')}</div>
+    <div class="legend"><span><i class="sw"></i>Daily spend</span><span><i class="ln"></i>7-day average (the trend: going down is good)</span></div></div>`;
+}
+
+/* ---------- PROOF ENGINE ---------- */
+function vProof() {
+  const st = S.settings, t = today();
+  const from = proofRange ? addDays(t, -proofRange) : '0000-00-00';
+  const ls = S.leads.filter(l => l.created >= from);
+  const dms = sum(Object.entries(S.daily).filter(([d]) => d >= from), ([, v]) => v.dms);
+  const steps = [
+    ['DMs sent', dms],
+    ['Leads in pipeline', ls.length],
+    ['Real conversations', ls.filter(l => reached(l, 'convo')).length],
+    ['Calls booked', ls.filter(l => reached(l, 'booked')).length],
+    ['Calls held', ls.filter(l => reached(l, 'decide')).length],
+    ['Clients signed', ls.filter(l => l.stage === 'won').length],
+  ];
+  const top = Math.max(...steps.map(s => s[1]), 1);
+  const rate = (a, b) => b ? Math.round(a / b * 100) : null;
+  const won = ls.filter(l => l.stage === 'won');
+  const cash = sum(S.payments.filter(p => p.date >= from), 'amount');
+  const avgClose = won.length ? Math.round(sum(won, l => diff(l.created, l.wonDate || l.created)) / won.length) : 0;
+  const callWin = rate(steps[5][1], steps[4][1]), overall = rate(steps[5][1], steps[2][1]);
+  const rangeLbl = proofRange ? `the last ${proofRange} days` : 'all time';
+  const srcRows = SOURCES.map(s => { const a = ls.filter(l => l.source === s), w = a.filter(l => l.stage === 'won'); return {s, n:a.length, w:w.length, v:sum(w, 'value')}; }).filter(r => r.n).sort((a, b) => b.v - a.v || b.n - a.n);
+  /* readiness */
+  const best = Math.max(0, ...[...Array(12)].map((_, i) => monthRev(monthKey(-i))));
+  const dmDays = [...Array(14)].filter((_, i) => dayLog(addDays(t, -i)).dms >= st.dmTarget).length;
+  const tm = S.clients.filter(c => c.testimonial).length;
+  const checks = [
+    ['Hit ' + gbp(st.target) + ' cash in a single month', best >= st.target, `Best month so far: ${gbp(best)}`, null],
+    ['10 clients through the 6-week programme', S.clients.length >= 10, `${S.clients.length} / 10 clients`, null],
+    ['5 testimonials or case studies banked', tm >= 5, `${tm} / 5`, null],
+    ['Lead flow is repeatable (DM target hit 12 of last 14 days)', dmDays >= 12, `${dmDays} / 14 days`, null],
+    ['System documented (scripts, SOPs, call framework)', !!S.proof.sop, 'Tap to tick off', 'sop'],
+    ['Next offer written (outcome, price, structure)', !!S.proof.offer, 'Tap to tick off', 'offer'],
+  ];
+  const ready = checks.filter(c => c[1]).length;
+  const story = steps[5][1] ? `In ${rangeLbl}, I sent <em>${dms.toLocaleString()}</em> DMs, held <em>${steps[4][1]}</em> calls and signed <em>${steps[5][1]}</em> clients${callWin !== null ? ` — a <em>${callWin}%</em> call-to-client rate` : ''}. That's <em>${gbp(cash)}</em> cash collected from a repeatable system.`
+    : `Log your DMs and move leads through the pipeline. This page turns it into your proof: the exact numbers you'll show other coaches.`;
+  return `<div class="top"><div><h1>Proof Engine</h1><p>The numbers that prove your system works — and your sales pitch to other coaches.</p></div>
+    <div class="seg">${[[30,'30 days'],[90,'90 days'],[0,'All time']].map(([v, l]) => `<button class="${proofRange === v ? 'on' : ''}" data-act="range" data-v="${v}">${l}</button>`).join('')}</div></div>
+  <div class="story">${story}</div>
+  <div class="kpis">
+    <div class="kpi"><div class="l">Call → client</div><div class="v">${callWin === null ? '—' : callWin + '%'}</div><div class="s">of calls held become clients</div></div>
+    <div class="kpi"><div class="l">Convo → client</div><div class="v">${overall === null ? '—' : overall + '%'}</div><div class="s">of real conversations</div></div>
+    <div class="kpi"><div class="l">Avg days to close</div><div class="v">${won.length ? avgClose : '—'}</div><div class="s">from first DM to signed</div></div>
+    <div class="kpi"><div class="l">Cash collected</div><div class="v">${gbp(cash)}</div><div class="s">in ${rangeLbl}</div></div>
+    <div class="kpi"><div class="l">DMs per client</div><div class="v">${steps[5][1] ? Math.round(dms / steps[5][1]) : '—'}</div><div class="s">your cost-in-effort per sale</div></div>
+  </div>
+  <div class="grid">
+    <div class="stack">
+      <div class="card funnel"><h2>Your funnel <small>${rangeLbl}</small></h2>
+        ${steps.map(([label, n], i) => { const prev = i > 0 ? steps[i - 1][1] : null; const r = prev ? rate(n, prev) : null;
+          return `<div class="f"><span>${label}</span><div class="bar"><i class="${i === 5 ? 'g' : ''}" style="width:${n / top * 100}%"></i></div><b style="text-align:right">${n.toLocaleString()}</b></div>${r !== null && i > 0 && i !== 1 ? `<div class="rate">↳ ${r}% move on to the next step</div>` : ''}`; }).join('')}</div>
+      <div class="card"><h2>Where clients come from <small>${rangeLbl}</small></h2>${srcRows.length ? `<table><tr><th>Source</th><th class="r">Leads</th><th class="r">Won</th><th class="r">Win rate</th><th class="r">Revenue</th></tr>
+        ${srcRows.map(r => `<tr><td><b>${r.s}</b></td><td class="r">${r.n}</td><td class="r">${r.w}</td><td class="r">${rate(r.w, r.n)}%</td><td class="r val">${gbp(r.v)}</td></tr>`).join('')}</table>` : '<div class="empty">No leads in this range.</div>'}</div>
+    </div>
+    <div class="stack">
+      <div class="card"><h2>Ready to launch the next offer? <small>${ready} / ${checks.length}</small></h2>
+        ${checks.map(([label, ok, detail, key]) => `<${key ? 'button data-act="proofToggle" data-k="' + key + '"' : 'div'} class="rd"><span class="ico ${ok ? 'ok' : ''}">${ok ? '✓' : ''}</span><span style="flex:1"><b>${label}</b><div class="sub">${detail}</div></span></${key ? 'button' : 'div'}>`).join('')}
+        ${bar(ready / checks.length * 100, ready === checks.length ? 'g' : '')}</div>
+      <div class="card"><h2>Your roadmap</h2><div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div class="phase ${ready < checks.length ? 'cur' : ''}"><small>Phase 1 · Prove it</small><p style="margin-top:4px"><b>6-week Life Coaching Mentorship</b></p><p class="sub">Hit ${gbp(st.target)}/month, bank the proof, document the system.</p></div>
+        <div class="phase ${ready === checks.length ? 'cur' : ''}"><small>Phase 2 · Scale it</small><p style="margin-top:4px"><b>${esc(st.nextOffer)}</b></p><p class="sub">“2027 is your last chance to scale before the market saturates.” Launch backed by your own numbers.</p></div></div></div>
+    </div>
+  </div>`;
+}
+
+/* ---------- SETTINGS ---------- */
+function vSettings() {
+  const s = S.settings;
+  return `<div class="top"><div><h1>Settings</h1><p>Make it yours. Everything is saved automatically in this browser.</p></div></div>
+  <div class="grid"><div class="card"><form data-form="settings">
+    <div class="two">${fld('Business name', 'bizName', s.bizName)}${fld('Your first name', 'ownerName', s.ownerName)}</div>
+    <div class="two">${fld('Monthly revenue goal (£)', 'target', s.target, 'number', 'min="0"')}${fld('Main offer price (£)', 'offerPrice', s.offerPrice, 'number', 'min="0"')}</div>
+    <div class="two">${fld('Chase a lead after (days silent)', 'staleDays', s.staleDays, 'number', 'min="1"')}${fld('Default next follow-up (days)', 'gap', s.gap, 'number', 'min="1"')}</div>
+    <div class="sec">Daily targets</div>
+    <div class="two">${fld('DMs sent', 'dmTarget', s.dmTarget, 'number', 'min="1"')}${fld('Conversations started', 'convoTarget', s.convoTarget, 'number', 'min="1"')}</div>
+    <div class="two">${fld('Calls booked', 'callTarget', s.callTarget, 'number', 'min="1"')}${fld('Content pieces', 'contentTarget', s.contentTarget, 'number', 'min="1"')}</div>
+    ${fld('Your next offer (phase 2)', 'nextOffer', s.nextOffer)}
+    <div class="mfoot"><button class="btn">Save settings</button></div></form></div>
+  <div class="stack"><div class="card"><h2>Your data</h2>
+    <p class="sub" style="margin-bottom:12px">Everything lives in this browser on this computer. Export a backup regularly, and use it to move to another device.</p>
+    <div class="inline"><button class="btn ghost" data-act="export">Export backup</button>
+    <label class="btn ghost" style="cursor:pointer">Import backup<input type="file" accept=".json,application/json" id="importFile" hidden></label></div></div>
+  <div class="card"><h2>Reset</h2><div class="inline"><button class="btn ghost" data-act="loadSample">Load sample data</button><button class="btn danger" data-act="wipe">Delete everything</button></div></div></div></div>`;
+}
+
+/* ================= modals ================= */
+function leadForm(id) {
+  const l = id ? S.leads.find(x => x.id === id) : {name:'', handle:'', source:SOURCES[0], stage:'dm', value:S.settings.offerPrice, lastContact:today(), nextFollowUp:addDays(today(), S.settings.gap), notes:''};
+  modal(id ? 'Edit lead' : 'New lead', `<form data-form="lead" data-id="${id || ''}">
+    <div class="two">${fld('Name', 'name', l.name, 'text', 'required')}${fld('Instagram / handle', 'handle', l.handle)}</div>
+    <div class="two">${sel('Source', 'source', SOURCES, l.source)}${sel('Stage', 'stage', STAGES.map(s => [s.id, s.label]), l.stage)}</div>
+    <div class="two">${fld('Deal value (£)', 'value', l.value, 'number', 'min="0"')}${fld('Last contacted', 'lastContact', l.lastContact, 'date')}</div>
+    ${fld('Next follow-up', 'nextFollowUp', l.nextFollowUp, 'date')}
+    <label class="fld"><span>Notes</span><textarea name="notes">${esc(l.notes)}</textarea></label>
+    <div class="mfoot">${id ? '<button type="button" class="btn danger l" data-act="delLead" data-id="' + id + '">Delete</button>' : ''}<button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save</button></div></form>`);
+}
+function clientForm(id) {
+  const c = id ? S.clients.find(x => x.id === id) : {name:'', start:today(), price:S.settings.offerPrice, status:'active', health:'ok', nextSession:'', notes:'', testimonial:false, upsell:false};
+  modal(id ? 'Edit client' : 'New client', `<form data-form="client" data-id="${id || ''}">
+    ${fld('Name', 'name', c.name, 'text', 'required')}
+    <div class="two">${fld('Start date', 'start', c.start, 'date', 'required')}${fld('Price (£)', 'price', c.price, 'number', 'min="0"')}</div>
+    <div class="two">${sel('Status', 'status', [['active','Active'],['completed','Completed'],['paused','Paused']], c.status)}${sel('How are they doing?', 'health', [['ok','On track'],['risk','At risk']], c.health)}</div>
+    ${fld('Next session', 'nextSession', c.nextSession, 'date')}
+    <label class="fld"><span>Notes</span><textarea name="notes">${esc(c.notes)}</textarea></label>
+    <label class="chk"><input type="checkbox" name="testimonial" ${c.testimonial ? 'checked' : ''}> Testimonial / case study received</label>
+    <label class="chk"><input type="checkbox" name="upsell" ${c.upsell ? 'checked' : ''}> Upsell / referral candidate</label>
+    <div class="mfoot">${id ? '<button type="button" class="btn danger l" data-act="delClient" data-id="' + id + '">Delete</button>' : ''}<button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save</button></div></form>`);
+}
+function payForm() {
+  modal('Log payment', `<form data-form="payment">
+    <div class="two">${fld('Date', 'date', today(), 'date', 'required')}${fld('Amount (£)', 'amount', S.settings.offerPrice, 'number', 'min="1" required')}</div>
+    <label class="fld"><span>From</span><select name="clientId"><option value="">Someone else…</option>${S.clients.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label>
+    ${fld('Name (if not a client)', 'who')}${fld('What for', 'note', '6-week mentorship')}
+    <div class="mfoot"><button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save</button></div></form>`);
+}
+function winForm(id) {
+  const l = S.leads.find(x => x.id === id);
+  modal('🎉 Won — ' + esc(l.name), `<form data-form="win" data-id="${id}">
+    <div class="two">${fld('Programme price (£)', 'price', l.value, 'number', 'min="0"')}${fld('Paid today (£)', 'paid', l.value, 'number', 'min="0"')}</div>
+    ${fld('Programme start date', 'start', today(), 'date')}
+    <p class="sub" style="margin-bottom:12px">This adds them to Clients and logs the payment.</p>
+    <div class="mfoot"><button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn good">Sign them up</button></div></form>`);
+}
+function lostForm(id) {
+  const l = S.leads.find(x => x.id === id);
+  modal('Lost — ' + esc(l.name), `<form data-form="lost" data-id="${id}">${sel('Main reason', 'reason', LOST_REASONS, 'Price')}
+    <p class="sub" style="margin-bottom:12px">Reasons feed back into what you fix in your offer or pitch.</p>
+    <div class="mfoot"><button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Mark as lost</button></div></form>`);
+}
+
+function expenseForm() {
+  modal('Log money out', `<form data-form="expense">
+    <div class="two">${fld('Date', 'date', today(), 'date', 'required')}${fld('Amount (£)', 'amount', '', 'number', 'min="0.01" step="0.01" required')}</div>
+    ${sel('Category', 'cat', EXP_CATS, 'Food')}${fld('What was it?', 'note')}
+    <div class="mfoot"><button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save</button></div></form>`);
+}
+function billForm(id) {
+  const b = id ? S.bills.find(x => x.id === id) : {name:'', amount:'', day:1, cat:'Bills'};
+  modal(id ? 'Edit bill' : 'New monthly bill', `<form data-form="bill" data-id="${id || ''}">
+    ${fld('Bill name', 'name', b.name, 'text', 'required placeholder="e.g. Rent, Circle, Phone"')}
+    <div class="two">${fld('Amount (£)', 'amount', b.amount, 'number', 'min="0.01" step="0.01" required')}${fld('Due day of month', 'day', b.day, 'number', 'min="1" max="31" required')}</div>
+    ${sel('Category', 'cat', EXP_CATS, b.cat)}
+    <div class="mfoot">${id ? '<button type="button" class="btn danger l" data-act="delBill" data-id="' + id + '">Delete</button>' : ''}<button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save</button></div></form>`);
+}
+function goalForm() {
+  const s = S.settings;
+  modal('My goal', `<form data-form="goal">
+    ${fld('What am I going to achieve?', 'goalTitle', s.goalTitle, 'text', 'required')}
+    <div class="two">${fld('Deadline', 'goalDeadline', s.goalDeadline, 'date', 'required')}${fld('Monthly revenue goal (£)', 'target', s.target, 'number', 'min="1"')}</div>
+    <div class="mfoot"><button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save goal</button></div></form>`);
+}
+function identityForm() {
+  modal('Who I am', `<form data-form="identity">
+    <p class="sub" style="margin-bottom:10px">Write it in the present tense, as if it's already true. Read it out loud every morning.</p>
+    <label class="fld"><textarea name="identity" style="min-height:240px;font:500 15px/1.6 var(--sans)" required>${esc(S.identity)}</textarea></label>
+    <div class="mfoot"><button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save</button></div></form>`);
+}
+
+/* ================= actions ================= */
+function applyStage(l, stage) {
+  const t = today();
+  l.stage = stage; l.history.push({stage, date:t}); l.lastContact = t;
+  if (OPEN.includes(stage) && !l.nextFollowUp) l.nextFollowUp = addDays(t, S.settings.gap);
+}
+function moveLead(id, stage) {
+  const l = S.leads.find(x => x.id === id); if (!l || l.stage === stage) return;
+  if (stage === 'won') return winForm(id);
+  if (stage === 'lost') return lostForm(id);
+  applyStage(l, stage); l.lostReason = ''; save(); render();
+}
+function toggleTask(id) {
+  const t = S.tasks.find(x => x.id === id); if (!t) return;
+  t.done = !t.done; t.doneAt = t.done ? today() : '';
+  if (t.done && t.repeat) {
+    const step = t.repeat === 'daily' ? 1 : 7;
+    const base = t.due && t.due > today() ? t.due : today();
+    if (!S.tasks.some(x => !x.done && x.title === t.title && x.repeat === t.repeat)) S.tasks.push({...t, id:uid(), done:false, doneAt:'', due:addDays(base, step)});
+  }
+  save(); render();
+}
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const a = el.dataset.act, id = el.dataset.id;
+  switch (a) {
+    case 'go': go(el.dataset.v); break;
+    case 'closeModal': if (el.classList.contains('mback') && e.target !== el) return; closeModal(); break;
+    case 'newLead': leadForm(); break;
+    case 'editLead': leadForm(id); break;
+    case 'newClient': clientForm(); break;
+    case 'editClient': clientForm(id); break;
+    case 'newPayment': payForm(); break;
+    case 'chased': { const l = S.leads.find(x => x.id === id); l.lastContact = today(); l.nextFollowUp = addDays(today(), S.settings.gap); save(); render(); toast(`Logged. Next follow-up with ${l.name}: ${fdate(l.nextFollowUp)}`); break; }
+    case 'snooze': { const l = S.leads.find(x => x.id === id); l.nextFollowUp = addDays(today(), +el.dataset.n); save(); render(); toast('Snoozed'); break; }
+    case 'step': { const l = S.leads.find(x => x.id === id); const i = OPEN.indexOf(l.stage) + +el.dataset.dir; if (i < 0) return; moveLead(id, i >= OPEN.length ? 'won' : OPEN[i]); break; }
+    case 'delLead': if (confirm('Delete this lead permanently?')) { S.leads = S.leads.filter(x => x.id !== id); save(); closeModal(); render(); } break;
+    case 'delClient': if (confirm('Delete this client? Their payments stay in your revenue.')) { S.clients = S.clients.filter(x => x.id !== id); S.payments.forEach(p => { if (p.clientId === id) p.clientId = ''; }); save(); closeModal(); render(); } break;
+    case 'newExpense': expenseForm(); break;
+    case 'newBill': billForm(); break;
+    case 'editBill': billForm(id); break;
+    case 'editGoal': goalForm(); break;
+    case 'editIdentity': identityForm(); break;
+    case 'nnToggle': nnToggle(id); break;
+    case 'nnDel': S.nonneg = S.nonneg.filter(x => x.id !== id); save(); render(); break;
+    case 'delExp': S.expenses = S.expenses.filter(x => x.id !== id); save(); render(); break;
+    case 'spendMode': spendMode = el.dataset.m; render(); break;
+    case 'delBill': if (confirm('Delete this bill? Past payments stay in your spending log.')) { S.bills = S.bills.filter(x => x.id !== id); save(); closeModal(); render(); } break;
+    case 'billPay': {
+      const b = S.bills.find(x => x.id === id);
+      if (billPaid(b)) S.expenses = S.expenses.filter(e => !(e.billId === id && e.date.startsWith(monthKey())));
+      else { S.expenses.push({id:uid(), date:today(), amount:b.amount, cat:b.cat, note:b.name, billId:id}); toast(`${b.name} marked as paid`); }
+      save(); render(); break;
+    }
+    case 'toggleTask': toggleTask(id); break;
+    case 'delTask': S.tasks = S.tasks.filter(x => x.id !== id); save(); render(); break;
+    case 'delPay': if (confirm('Delete this payment?')) { S.payments = S.payments.filter(x => x.id !== id); save(); render(); } break;
+    case 'taskFilter': taskFilter = el.dataset.c; render(); break;
+    case 'bump': bump(el.dataset.k, +el.dataset.n); break;
+    case 'range': proofRange = +el.dataset.v; render(); break;
+    case 'proofToggle': S.proof[el.dataset.k] = !S.proof[el.dataset.k]; save(); render(); break;
+    case 'copyTmpl': { const txt = TEMPLATES[+el.dataset.i][1].replace(/\{name\}/g, '[name]'); (navigator.clipboard?.writeText(txt) || Promise.reject()).then(() => toast('Copied — swap [name] for theirs'), () => toast('Copy blocked by browser — select the text instead')); break; }
+    case 'clearSample': if (confirm('Delete all sample data and start with a blank dashboard? (Your goal, identity statement and non-negotiables are kept.)')) {
+      const n = blank(); n.settings = {...S.settings, sample:false}; n.identity = S.identity; n.nonneg = S.nonneg; S = n; save(); render(); toast('Fresh start. Add your first lead!'); } break;
+    case 'loadSample': if (confirm('Replace everything with sample data? (Your goal, identity statement and non-negotiables are kept.)')) { S = sampleData(S); save(); render(); } break;
+    case 'wipe': if (confirm('Delete ALL your data? Export a backup first if you are unsure. This cannot be undone.')) { S = blank(); save(); render(); toast('Everything deleted'); } break;
+    case 'export': {
+      const blob = new Blob([JSON.stringify(S, null, 2)], {type:'application/json'}), a2 = document.createElement('a');
+      a2.href = URL.createObjectURL(blob); a2.download = `${S.settings.bizName.replace(/\W+/g, '-').toLowerCase()}-backup-${today()}.json`; a2.click(); toast('Backup downloaded'); break;
+    }
+  }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+document.addEventListener('submit', e => {
+  const form = e.target.closest('form[data-form]'); if (!form) return;
+  e.preventDefault();
+  const f = Object.fromEntries(new FormData(form)), kind = form.dataset.form, id = form.dataset.id, t = today();
+  if (kind === 'lead') {
+    if (id) {
+      const l = S.leads.find(x => x.id === id), newStage = f.stage;
+      Object.assign(l, {name:f.name.trim(), handle:f.handle.trim(), source:f.source, value:+f.value || 0, lastContact:f.lastContact, nextFollowUp:f.nextFollowUp, notes:f.notes});
+      save(); closeModal();
+      if (newStage !== l.stage) moveLead(id, newStage); else render();
+    } else {
+      S.leads.push({id:uid(), name:f.name.trim(), handle:f.handle.trim(), source:f.source, stage:f.stage, value:+f.value || 0, lastContact:f.lastContact || t, nextFollowUp:f.nextFollowUp, notes:f.notes, created:t, history:[{stage:f.stage, date:t}]});
+      save(); closeModal(); render(); toast('Lead added');
+    }
+  } else if (kind === 'client') {
+    const data = {name:f.name.trim(), start:f.start, price:+f.price || 0, status:f.status, health:f.health, nextSession:f.nextSession, notes:f.notes, testimonial:!!f.testimonial, upsell:!!f.upsell};
+    if (id) Object.assign(S.clients.find(x => x.id === id), data); else S.clients.push({id:uid(), ...data});
+    save(); closeModal(); render();
+  } else if (kind === 'payment') {
+    const c = S.clients.find(x => x.id === f.clientId);
+    S.payments.push({id:uid(), date:f.date, who:c ? c.name : (f.who.trim() || 'Payment'), amount:+f.amount || 0, note:f.note, clientId:c ? c.id : ''});
+    save(); closeModal(); render(); toast('Payment logged 💷');
+  } else if (kind === 'win') {
+    const l = S.leads.find(x => x.id === id), price = +f.price || 0, paid = +f.paid || 0;
+    applyStage(l, 'won'); l.wonDate = t; l.value = price; l.nextFollowUp = '';
+    const c = {id:uid(), name:l.name, start:f.start || t, price, status:'active', health:'ok', nextSession:'', notes:'', testimonial:false, upsell:false, leadId:l.id};
+    S.clients.push(c);
+    if (paid > 0) S.payments.push({id:uid(), date:t, who:l.name, amount:paid, note:'6-week mentorship', clientId:c.id});
+    save(); closeModal(); render(); toast(`Signed ${l.name}! 🎉`);
+  } else if (kind === 'lost') {
+    const l = S.leads.find(x => x.id === id);
+    applyStage(l, 'lost'); l.lostReason = f.reason; l.nextFollowUp = '';
+    save(); closeModal(); render();
+  } else if (kind === 'task') {
+    S.tasks.push({id:uid(), title:f.title.trim(), cat:f.cat || 'Admin', due:f.due || '', pri:f.pri || 'med', repeat:f.repeat || '', done:false, doneAt:''});
+    save(); render();
+  } else if (kind === 'expense') {
+    S.expenses.push({id:uid(), date:f.date || t, amount:+f.amount || 0, cat:f.cat, note:(f.note || '').trim(), billId:''});
+    save(); closeModal(); render(); toast('Logged ' + gbp(+f.amount || 0));
+  } else if (kind === 'bill') {
+    const data = {name:f.name.trim(), amount:+f.amount || 0, day:Math.min(31, Math.max(1, +f.day || 1)), cat:f.cat};
+    if (id) Object.assign(S.bills.find(x => x.id === id), data); else S.bills.push({id:uid(), ...data});
+    save(); closeModal(); render();
+  } else if (kind === 'goal') {
+    Object.assign(S.settings, {goalTitle:f.goalTitle.trim(), goalDeadline:f.goalDeadline, target:Math.max(1, +f.target || S.settings.target)});
+    save(); closeModal(); render(); toast('Goal saved');
+  } else if (kind === 'identity') {
+    S.identity = f.identity.trim() || DEFAULT_IDENTITY; save(); closeModal(); render(); toast('Identity statement saved');
+  } else if (kind === 'nn') {
+    S.nonneg.push({id:uid(), title:f.title.trim()}); save(); render();
+  } else if (kind === 'settings') {
+    const n = k => Math.max(1, +f[k] || DEFAULT_SETTINGS[k]);
+    Object.assign(S.settings, {bizName:f.bizName.trim() || 'My Coaching', ownerName:f.ownerName.trim(), target:n('target'), offerPrice:n('offerPrice'), staleDays:n('staleDays'), gap:n('gap'), dmTarget:n('dmTarget'), convoTarget:n('convoTarget'), callTarget:n('callTarget'), contentTarget:n('contentTarget'), nextOffer:f.nextOffer});
+    document.title = S.settings.bizName + ' — Command Centre';
+    save(); render(); toast('Settings saved');
+  }
+});
+
+/* drag & drop on the kanban */
+let dragId = null;
+document.addEventListener('dragstart', e => { const c = e.target.closest?.('.lcard'); if (!c) return; dragId = c.dataset.lead; c.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', dragId); });
+document.addEventListener('dragend', () => { dragId = null; document.querySelectorAll('.dragging,.over').forEach(x => x.classList.remove('dragging', 'over')); });
+document.addEventListener('dragover', e => { const col = e.target.closest?.('.kcol'); if (col && dragId) { e.preventDefault(); document.querySelectorAll('.kcol.over').forEach(x => x !== col && x.classList.remove('over')); col.classList.add('over'); } });
+document.addEventListener('drop', e => { const col = e.target.closest?.('.kcol'); if (col && dragId) { e.preventDefault(); const id = dragId; dragId = null; moveLead(id, col.dataset.stage); } });
+
+/* import backup */
+document.addEventListener('change', e => {
+  if (e.target.id !== 'importFile' || !e.target.files[0]) return;
+  const r = new FileReader();
+  r.onload = () => { try { const o = JSON.parse(r.result); if (!Array.isArray(o.leads)) throw 0; S = migrate(o); save(); render(); toast('Backup restored'); } catch (x) { toast('That file is not a valid backup'); } };
+  r.readAsText(e.target.files[0]);
+});
+window.addEventListener('hashchange', () => { const v = location.hash.replace('#', ''); if (NAV.some(n => n[0] === v) && v !== view) { view = v; render(); } });
+document.title = S.settings.bizName + ' — Command Centre';
+render();
+</script>
+</body>
+</html>
