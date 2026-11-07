@@ -190,7 +190,6 @@ td.r,th.r{text-align:right}
 .ident{background:linear-gradient(135deg,rgba(202,163,28,.14),rgba(202,163,28,.03));border-color:var(--line2)}
 .idtext{font:500 17px/1.7 var(--head);margin:4px 0 16px}
 .mission{border-color:var(--line2);background:linear-gradient(135deg,rgba(255,255,255,.04),rgba(202,163,28,.08))}
-.mtext{font:600 21px/1.55 var(--head);color:var(--gold2);text-align:center;max-width:900px;margin:6px auto 8px;letter-spacing:-.01em}
 .nnl{display:grid;grid-template-columns:1fr 1fr;column-gap:32px}
 .nnl .row:nth-child(-n+2){border-top:0}
 .dchart{position:relative;display:grid;grid-template-columns:repeat(30,1fr);height:200px;align-items:end;border-bottom:1px solid var(--line);margin-top:28px}
@@ -584,7 +583,7 @@ function identityCard() {
 }
 function missionCard() {
   return `<div class="card mission"><h2><span>Mission statement ${S.mission === DEFAULT_MISSION ? '<span class="chip warn">Draft — make it yours</span>' : ''}</span><button class="btn sm ghost" data-act="editMission">Edit</button></h2>
-    <div class="mtext">${esc(S.mission).replace(/\n/g, '<br>')}</div></div>`;
+    <div class="idtext" style="margin-bottom:4px">${esc(S.mission).replace(/\n/g, '<br>')}</div></div>`;
 }
 function nnCard() {
   const done = S.nonneg.filter(n => isDone(n.id)).length, total = S.nonneg.length, sk = nnStreak();
