@@ -205,6 +205,13 @@ td.r,th.r{text-align:right}
 .sunbtn:hover{border-color:var(--line2)}
 .sunbtn.on{background:rgba(202,163,28,.2);border-color:var(--line2);color:var(--gold2)}
 .offrow{opacity:.55}
+.grip{cursor:grab;color:var(--dim);font-size:20px;line-height:1;padding:0 2px;user-select:none;flex:none}
+.row[data-nn]{cursor:grab}
+.row.dragging{opacity:.4}
+.row.dropover{outline:1px dashed var(--gold);outline-offset:-1px;background:rgba(202,163,28,.07)}
+.mvs{display:flex;gap:4px}
+.mv{background:none;border:1px solid var(--line);color:var(--muted);border-radius:6px;font-size:10px;padding:3px 7px}
+.mv:hover{border-color:var(--line2);color:var(--gold2)}
 .tick.off{border-style:dashed;cursor:default}
 .restnote{background:rgba(202,163,28,.08);border:1px solid var(--line2);border-radius:12px;padding:12px 16px;color:var(--gold2);font-weight:600;margin-bottom:8px}
 .mini i.offbar{background:rgba(255,255,255,.14)}
@@ -615,6 +622,7 @@ const doneOn = (item, d) => item.auto === 'dms' ? (((S.daily[d] || {}).dms) || 0
   : item.auto ? !!(S.contentLog[d] || {})[item.auto]
   : (S.nonnegDone[d] || []).includes(item.id);
 const isDone = id => { const n = S.nonneg.find(x => x.id === id); return n ? doneOn(n, today()) : false; };
+let nnReorder = false; // reorder mode on/off
 const nnApplies = (item, d) => !isSunday(d) || !!item.sun;
 function nnStreak() {
   if (!S.nonneg.length) return 0;
@@ -628,6 +636,14 @@ function nnStreak() {
     n++; d = addDays(d, -1);
   }
   return n;
+}
+function nnMove(id, dir) {
+  const t = today(), item = S.nonneg.find(x => x.id === id); if (!item) return;
+  const group = S.nonneg.filter(x => nnApplies(x, t) === nnApplies(item, t));
+  const nb = group[group.indexOf(item) + dir]; if (!nb) return;
+  const i = S.nonneg.indexOf(item), j = S.nonneg.indexOf(nb);
+  [S.nonneg[i], S.nonneg[j]] = [S.nonneg[j], S.nonneg[i]];
+  save(); render();
 }
 function nnToggle(id) {
   const t = today(), n = S.nonneg.find(x => x.id === id);
@@ -668,11 +684,11 @@ function nnCard() {
   const t = today(), sun = isSunday(t);
   const active = S.nonneg.filter(n => nnApplies(n, t)), off = S.nonneg.filter(n => !nnApplies(n, t));
   const done = active.filter(n => isDone(n.id)).length, total = active.length, sk = nnStreak();
-  const row = (n, rest) => `<div class="row ${rest ? 'offrow' : ''}">${rest ? '<span class="tick off"></span>' : `<button class="tick ${isDone(n.id) ? 'done' : ''}" data-act="nnToggle" data-id="${n.id}" aria-label="Done">${TICK}</button>`}
+  const row = (n, rest) => `<div class="row ${rest ? 'offrow' : ''}" ${nnReorder ? `draggable="true" data-nn="${n.id}"` : ''}>${nnReorder ? '<span class="grip" title="Drag to reorder">⠿</span>' : ''}${rest ? '<span class="tick off"></span>' : `<button class="tick ${isDone(n.id) ? 'done' : ''}" data-act="nnToggle" data-id="${n.id}" aria-label="Done">${TICK}</button>`}
     <div class="grow ${isDone(n.id) && !rest ? 'done-t' : ''}"><b style="font-weight:600">${esc(n.title)}</b>${n.auto ? ` <span class="chip">${n.auto === 'dms' ? 'from DM count' : 'from Content'}</span>` : ''}</div>
-    <button class="sunbtn ${n.sun ? 'on' : ''}" data-act="nnSun" data-id="${n.id}" title="Tap to ${n.sun ? 'stop doing' : 'also do'} this on Sundays">Sun</button><button class="x" data-act="nnDel" data-id="${n.id}" aria-label="Remove">×</button></div>`;
+    ${nnReorder ? `<span class="mvs"><button class="mv" data-act="nnMove" data-id="${n.id}" data-dir="-1" aria-label="Move up">▲</button><button class="mv" data-act="nnMove" data-id="${n.id}" data-dir="1" aria-label="Move down">▼</button></span>` : ''}<button class="sunbtn ${n.sun ? 'on' : ''}" data-act="nnSun" data-id="${n.id}" title="Tap to ${n.sun ? 'stop doing' : 'also do'} this on Sundays">Sun</button><button class="x" data-act="nnDel" data-id="${n.id}" aria-label="Remove">×</button></div>`;
   const small = sun ? (total ? `${done} / ${total} done · Sunday: only items marked Sun` : 'Sunday is your day off · streak is safe') : `${done} / ${total} done today · ${sk ? sk + '-day streak' : 'complete all of them to start a streak'}`;
-  return `<div class="card" style="margin-bottom:16px"><h2>My daily non-negotiables <small>${small}</small></h2>
+  return `<div class="card" style="margin-bottom:16px"><h2><span>My daily non-negotiables</span><span style="display:flex;gap:12px;align-items:center"><small>${small}</small><button class="btn sm ${nnReorder ? '' : 'ghost'}" data-act="nnReorder">${nnReorder ? 'Done' : 'Reorder'}</button></span></h2>
     ${sun && !total ? '<div class="restnote">🙏 Sunday is your day of rest. Nothing is required today, and your streak is safe' + (sk ? ` (${sk}-day streak).` : '.') + '</div>' : bar(total ? done / total * 100 : 0, done === total && total ? 'g' : '')}
     <div class="nnl" style="margin-top:6px">${active.map(n => row(n, false)).join('') || ''}</div>
     ${off.length && sun ? `<div class="sec" style="margin-top:14px">Day off today (Monday to Saturday only)</div><div class="nnl">${off.map(n => row(n, true)).join('')}</div>` : ''}
@@ -1224,6 +1240,8 @@ document.addEventListener('click', e => {
     case 'weekNav': contentWeek = +el.dataset.n === 0 ? 0 : contentWeek + +el.dataset.n; render(); break;
     case 'wkBump': { const b = addDays(weekStart(today()), contentWeek * 7), w = S.weekly[b] = S.weekly[b] || {yt:0, clip:0}; w[el.dataset.k] = Math.max(0, (w[el.dataset.k] || 0) + +el.dataset.n); save(); render(); break; }
     case 'nnToggle': nnToggle(id); break;
+    case 'nnReorder': nnReorder = !nnReorder; render(); break;
+    case 'nnMove': nnMove(id, +el.dataset.dir); break;
     case 'nnSun': { const n = S.nonneg.find(x => x.id === id); n.sun = !n.sun; save(); render(); break; }
     case 'nnDel': S.nonneg = S.nonneg.filter(x => x.id !== id); save(); render(); break;
     case 'delExp': S.expenses = S.expenses.filter(x => x.id !== id); save(); render(); break;
@@ -1377,6 +1395,20 @@ document.addEventListener('change', e => {
     if (f.elements.counts) { f.elements.counts.checked = !!t.value; fire(f.elements.counts); }
   }
 });
+
+let nnDragId = null;
+const nnRow = e => e.target.closest && e.target.closest('.row[data-nn]');
+document.addEventListener('dragstart', e => { const r = nnRow(e); if (!r) return; nnDragId = r.dataset.nn; r.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', nnDragId); });
+document.addEventListener('dragover', e => { const r = nnRow(e); if (r && nnDragId) { e.preventDefault(); document.querySelectorAll('.row.dropover').forEach(x => x !== r && x.classList.remove('dropover')); r.classList.add('dropover'); } });
+document.addEventListener('drop', e => {
+  const r = nnRow(e); if (!r || !nnDragId) return;
+  e.preventDefault();
+  const from = S.nonneg.findIndex(x => x.id === nnDragId), to = S.nonneg.findIndex(x => x.id === r.dataset.nn);
+  nnDragId = null;
+  if (from >= 0 && to >= 0 && from !== to) { const [it] = S.nonneg.splice(from, 1); S.nonneg.splice(to, 0, it); save(); }
+  render();
+});
+document.addEventListener('dragend', () => { nnDragId = null; document.querySelectorAll('.row.dragging,.row.dropover').forEach(x => x.classList.remove('dragging', 'dropover')); });
 
 /* import backup */
 document.addEventListener('change', e => {
