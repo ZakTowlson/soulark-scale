@@ -181,6 +181,8 @@ td.r,th.r{text-align:right}
 .mfoot .l{margin-right:auto}
 #toast{position:fixed;bottom:22px;left:50%;width:max-content;text-align:center;transform:translateX(-50%) translateY(30px);background:var(--gold);color:#1a1400;font-weight:700;padding:10px 20px;border-radius:30px;opacity:0;pointer-events:none;transition:.25s;z-index:60;max-width:90vw}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.saved{margin-top:12px;font-size:11.5px;font-weight:700;color:var(--good)}
+.saved.bad{color:var(--bad)}
 .gnum{font:700 72px/1 var(--head);color:var(--gold2);letter-spacing:-.03em;margin:6px 0 2px}
 .gnum.warn{color:var(--warn)}.gnum.bad{color:#FF8B8B}
 .glabel{color:var(--muted);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:12px}
@@ -297,6 +299,9 @@ const defaultNonneg = () => [
   {id:uid(), title:'Train / move my body'},
 ];
 const KEY = 'coachos.v1';
+const SNAP = KEY + '.snap.';      // automatic daily backups
+const UI_KEY = 'coachos.ui';      // remembers which tab / filters you were on
+const DRAFT_KEY = 'coachos.drafts'; // remembers half-typed text
 let S = loadState();
 
 function blank() {
@@ -304,11 +309,21 @@ function blank() {
     expenses:[], bills:[], identity:DEFAULT_IDENTITY, nonneg:defaultNonneg(), nonnegDone:{}};
 }
 function loadState() {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) return migrate(JSON.parse(raw));
-  } catch (e) {}
+  let raw = null;
+  try { raw = localStorage.getItem(KEY); } catch (e) {}
+  if (raw) {
+    try { snapshot(raw); return migrate(JSON.parse(raw)); }
+    catch (e) { try { localStorage.setItem(KEY + '.corrupt.' + Date.now(), raw); } catch (x) {} } // never lose it: keep the unreadable copy
+  }
   return sampleData();
+}
+/* once a day, on first open, keep a copy of yesterday's data. Last 7 days are kept. */
+function snapshot(raw) {
+  try {
+    const k = SNAP + today();
+    if (localStorage.getItem(k) === null) localStorage.setItem(k, raw);
+    Object.keys(localStorage).filter(x => x.startsWith(SNAP)).sort().slice(0, -7).forEach(x => localStorage.removeItem(x));
+  } catch (e) {}
 }
 function migrate(o) {
   const b = blank();
@@ -319,10 +334,13 @@ function migrate(o) {
   if (s.settings.sample && !(o.expenses && o.expenses.length)) { const sm = sampleData(); s.expenses = sm.expenses; s.bills = sm.bills; } // older sample data had no spending
   return s;
 }
-let storageOK = true;
+let storageOK = true, lastSaved = null;
+const savedLabel = () => !storageOK ? '⚠ NOT saving — export a backup' : lastSaved ? `✓ Auto-saved ${lastSaved.toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'})}` : '✓ Auto-save is on';
 function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(S)); storageOK = true; }
+  try { localStorage.setItem(KEY, JSON.stringify(S)); storageOK = true; lastSaved = new Date(); }
   catch (e) { if (storageOK) toast('Browser is blocking saving — use Settings → Export to keep your data'); storageOK = false; }
+  const el = document.getElementById('savedAt');
+  if (el) { el.textContent = savedLabel(); el.className = 'saved' + (storageOK ? '' : ' bad'); }
 }
 
 /* ---- sample data (so the dashboard looks alive on first open) ---- */
@@ -474,9 +492,14 @@ function toast(msg) {
 }
 function modal(title, body) {
   $('#modal').innerHTML = `<div class="mback" data-act="closeModal"><div class="mbox" role="dialog" aria-modal="true"><div class="mhead"><h3>${title}</h3><button class="x" data-act="closeModal" aria-label="Close">×</button></div>${body}</div></div>`;
+  restoreDrafts($('#modal'));
   const f = $('#modal input:not([type=hidden]):not([type=checkbox]), #modal select'); if (f) f.focus();
 }
-const closeModal = () => { $('#modal').innerHTML = ''; };
+function closeModal() {
+  $('#modal').querySelectorAll('form[data-form]').forEach(f => { delete drafts[formKey(f)]; });
+  delete drafts.__modal; saveDrafts();
+  $('#modal').innerHTML = '';
+}
 
 /* ================= views ================= */
 const NAV = [['today','Today','home'],['pipeline','Pipeline','funnel'],['followups','Follow-ups','bell'],['clients','Clients','users'],['tasks','To-do','check'],['revenue','Money','pound'],['proof','Proof Engine','trophy'],['settings','Settings','cog']];
@@ -493,7 +516,8 @@ function renderSide() {
       const badge = id === 'followups' && due ? `<span class="badge">${due}</span>` : id === 'tasks' && tk ? `<span class="badge gold">${tk}</span>` : '';
       return `<button class="${view === id ? 'on' : ''}" data-act="go" data-v="${id}">${svgI(ic)}${label}${badge}</button>`;
     }).join('')}</nav>
-    <div class="sidefoot"><small>${new Date().toLocaleDateString('en-GB',{month:'long'})} goal</small><b>${gbp(rev)}</b> <span class="sub">/ ${gbp(st.target)}</span>${bar(rev / st.target * 100)}</div>`;
+    <div class="sidefoot"><small>${new Date().toLocaleDateString('en-GB',{month:'long'})} goal</small><b>${gbp(rev)}</b> <span class="sub">/ ${gbp(st.target)}</span>${bar(rev / st.target * 100)}
+      <div id="savedAt" class="saved ${storageOK ? '' : 'bad'}">${savedLabel()}</div></div>`;
 }
 
 function render() {
@@ -501,6 +525,8 @@ function render() {
   const fn = {today:vToday, pipeline:vPipeline, followups:vFollow, clients:vClients, tasks:vTasks, revenue:vRevenue, proof:vProof, settings:vSettings}[view];
   const banner = S.settings.sample ? `<div class="banner"><span><b>You're looking at sample data</b> — so you can see how everything works.</span><button class="btn sm" data-act="clearSample">Clear it &amp; start fresh</button></div>` : '';
   $('#main').innerHTML = banner + fn();
+  restoreDrafts($('#main'));
+  saveUI();
 }
 function go(v) { view = v; location.hash = v; render(); window.scrollTo(0, 0); }
 
@@ -900,8 +926,14 @@ function vSettings() {
   <div class="stack"><div class="card"><h2>Your data</h2>
     <p class="sub" style="margin-bottom:12px">Everything lives in this browser on this computer. Export a backup regularly, and use it to move to another device.</p>
     <div class="inline"><button class="btn ghost" data-act="export">Export backup</button>
-    <label class="btn ghost" style="cursor:pointer">Import backup<input type="file" accept=".json,application/json" id="importFile" hidden></label></div></div>
+    <label class="btn ghost" style="cursor:pointer">Import backup<input type="file" accept=".json,application/json" id="importFile" hidden></label></div>${snapsHtml()}</div>
   <div class="card"><h2>Reset</h2><div class="inline"><button class="btn ghost" data-act="loadSample">Load sample data</button><button class="btn danger" data-act="wipe">Delete everything</button></div></div></div></div>`;
+}
+
+function snapsHtml() {
+  let ks = []; try { ks = Object.keys(localStorage).filter(k => k.startsWith(SNAP)).sort().reverse(); } catch (e) {}
+  return ks.length ? `<div class="sec" style="margin-top:18px">Automatic daily backups (last 7 days)</div>
+    ${ks.map(k => `<div class="row"><div class="grow">${fdate(k.slice(SNAP.length))}<div class="sub">as it was when you first opened it that day</div></div><button class="btn sm ghost" data-act="restoreSnap" data-k="${esc(k)}">Restore</button></div>`).join('')}` : '';
 }
 
 /* ================= modals ================= */
@@ -1005,7 +1037,7 @@ document.addEventListener('click', e => {
   const a = el.dataset.act, id = el.dataset.id;
   switch (a) {
     case 'go': go(el.dataset.v); break;
-    case 'closeModal': if (el.classList.contains('mback') && e.target !== el) return; closeModal(); break;
+    case 'closeModal': if (el.classList.contains('mback')) return; closeModal(); break; // clicking outside never closes (so you can't lose what you typed)
     case 'newLead': leadForm(); break;
     case 'editLead': leadForm(id); break;
     case 'newClient': clientForm(); break;
@@ -1016,6 +1048,8 @@ document.addEventListener('click', e => {
     case 'step': { const l = S.leads.find(x => x.id === id); const i = OPEN.indexOf(l.stage) + +el.dataset.dir; if (i < 0) return; moveLead(id, i >= OPEN.length ? 'won' : OPEN[i]); break; }
     case 'delLead': if (confirm('Delete this lead permanently?')) { S.leads = S.leads.filter(x => x.id !== id); save(); closeModal(); render(); } break;
     case 'delClient': if (confirm('Delete this client? Their payments stay in your revenue.')) { S.clients = S.clients.filter(x => x.id !== id); S.payments.forEach(p => { if (p.clientId === id) p.clientId = ''; }); save(); closeModal(); render(); } break;
+    case 'restoreSnap': if (confirm('Go back to this backup? Your current data will be replaced (export first if unsure).')) {
+      try { S = migrate(JSON.parse(localStorage.getItem(el.dataset.k))); save(); render(); toast('Backup restored'); } catch (x) { toast('Could not read that backup'); } } break;
     case 'newExpense': expenseForm(); break;
     case 'newBill': billForm(); break;
     case 'editBill': billForm(id); break;
@@ -1056,6 +1090,7 @@ document.addEventListener('submit', e => {
   const form = e.target.closest('form[data-form]'); if (!form) return;
   e.preventDefault();
   const f = Object.fromEntries(new FormData(form)), kind = form.dataset.form, id = form.dataset.id, t = today();
+  delete drafts[formKey(form)]; saveDrafts(); // submitted, so the draft is no longer needed
   if (kind === 'lead') {
     if (id) {
       const l = S.leads.find(x => x.id === id), newStage = f.stage;
@@ -1117,6 +1152,46 @@ document.addEventListener('dragend', () => { dragId = null; document.querySelect
 document.addEventListener('dragover', e => { const col = e.target.closest?.('.kcol'); if (col && dragId) { e.preventDefault(); document.querySelectorAll('.kcol.over').forEach(x => x !== col && x.classList.remove('over')); col.classList.add('over'); } });
 document.addEventListener('drop', e => { const col = e.target.closest?.('.kcol'); if (col && dragId) { e.preventDefault(); const id = dragId; dragId = null; moveLead(id, col.dataset.stage); } });
 
+/* ---- remember where you were + what you were typing ---- */
+let drafts = {};
+try { drafts = JSON.parse(localStorage.getItem(DRAFT_KEY)) || {}; } catch (e) {}
+const saveDrafts = () => { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(drafts)); } catch (e) {} };
+const formKey = f => f.dataset.form + ':' + (f.dataset.id || '');
+document.addEventListener('input', e => {
+  const f = e.target.closest && e.target.closest('form[data-form]');
+  if (!f || !e.target.name || e.target.type === 'hidden' || e.target.type === 'file') return;
+  const k = formKey(f); drafts[k] = drafts[k] || {};
+  drafts[k][e.target.name] = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+  saveDrafts();
+});
+function restoreDrafts(root) {
+  root.querySelectorAll('form[data-form]').forEach(f => {
+    const d = drafts[formKey(f)]; if (!d) return;
+    for (const [n, v] of Object.entries(d)) {
+      const el = f.elements[n]; if (!el || el.type === 'hidden' || el.length) continue;
+      if (el.type === 'checkbox') el.checked = v; else el.value = v;
+    }
+  });
+}
+/* remember which pop-up is open, so a refresh reopens it with your text still in it */
+['leadForm','clientForm','payForm','expenseForm','billForm','goalForm','identityForm','winForm','lostForm'].forEach(name => {
+  const orig = window[name];
+  window[name] = function (id) { drafts.__modal = {name, id}; saveDrafts(); return orig(id); };
+});
+function saveUI() { try { localStorage.setItem(UI_KEY, JSON.stringify({view, taskFilter, proofRange, spendMode})); } catch (e) {} }
+function loadUI() {
+  let ui = {}; try { ui = JSON.parse(localStorage.getItem(UI_KEY)) || {}; } catch (e) {}
+  if (!location.hash && NAV.some(n => n[0] === ui.view)) view = ui.view;
+  if (typeof ui.taskFilter === 'string' && ['All', ...CATS].includes(ui.taskFilter)) taskFilter = ui.taskFilter;
+  if ([0, 30, 90].includes(ui.proofRange)) proofRange = ui.proofRange;
+  if (ui.spendMode === 'all' || ui.spendMode === 'everyday') spendMode = ui.spendMode;
+}
+let scrollT;
+window.addEventListener('scroll', () => { clearTimeout(scrollT); scrollT = setTimeout(() => { try { sessionStorage.setItem('coachos.scroll', JSON.stringify({view, y:scrollY})); } catch (e) {} }, 150); }, {passive:true});
+window.addEventListener('pagehide', save);
+/* if the dashboard is open in two tabs, the other tab's changes show up here instead of being overwritten */
+window.addEventListener('storage', e => { if (e.key === KEY && e.newValue) { try { S = migrate(JSON.parse(e.newValue)); render(); } catch (x) {} } });
+
 /* import backup */
 document.addEventListener('change', e => {
   if (e.target.id !== 'importFile' || !e.target.files[0]) return;
@@ -1126,7 +1201,16 @@ document.addEventListener('change', e => {
 });
 window.addEventListener('hashchange', () => { const v = location.hash.replace('#', ''); if (NAV.some(n => n[0] === v) && v !== view) { view = v; render(); } });
 document.title = S.settings.bizName + ' — Command Centre';
+loadUI();
 render();
+try { /* put the scroll position back after a refresh */
+  const sc = JSON.parse(sessionStorage.getItem('coachos.scroll') || 'null');
+  if (sc && sc.view === view) window.scrollTo(0, sc.y);
+} catch (e) {}
+if (drafts.__modal) { /* reopen the pop-up you were in the middle of */
+  try { const m = drafts.__modal; window[m.name](m.id); } catch (e) { delete drafts.__modal; saveDrafts(); $('#modal').innerHTML = ''; }
+}
+try { if (localStorage.getItem(KEY) === null) save(); } catch (e) {} // first ever open: store it straight away
 </script>
 </body>
 </html>
