@@ -287,7 +287,7 @@ const DEFAULT_SETTINGS = {
   bizName:'Soul Ark Scale', ownerName:'Zak', target:5000, offerPrice:997, staleDays:3, gap:3,
   dmTarget:20, convoTarget:5, callTarget:1, contentTarget:1,
   nextOffer:'Scale Mentorship for Coaches', sample:false,
-  goalTitle:'Hit £5K/month with the 6-week mentorship',
+  goalTitle:'Hit 50 purchases of Soul Ark Scale', goalTarget:50, goalUnit:'purchases', goalCount:0,
 };
 const DEFAULT_IDENTITY = "I am a man of faith, discipline and action.\nI do the hard things first and I keep my word to myself.\nI serve every client with total integrity, and I show up every single day: I make the calls, I follow up, I lead by example.\nI am building Soul Ark Scale and I will not stop until I have proven it works.\nThis is who I am.";
 const DEFAULT_MISSION = "To help men around the world rebuild their lives through faith, strength and brotherhood, and to show other coaches how to scale their impact with integrity.";
@@ -332,6 +332,7 @@ function migrate(o) {
   const s = {...b, ...o, settings:{...b.settings, ...(o.settings||{})}};
   if (s.settings.bizName === 'Soul Ark') s.settings.bizName = 'Soul Ark Scale'; // rebrand of earlier saved data
   s.tasks.forEach(t => { t.cat = CAT_RENAME[t.cat] || t.cat; });
+  if (s.settings.goalTitle === 'Hit £5K/month with the 6-week mentorship') s.settings.goalTitle = DEFAULT_SETTINGS.goalTitle; // goal is purchases, not £
   s.leads.forEach(l => { l.history = l.history || [{stage:l.stage, date:l.created || today()}]; l.created = l.created || l.history[0].date; });
   if (s.settings.sample && !(o.expenses && o.expenses.length)) { const sm = sampleData(); s.expenses = sm.expenses; s.bills = sm.bills; } // older sample data had no spending
   return s;
@@ -518,7 +519,7 @@ function renderSide() {
       const badge = id === 'followups' && due ? `<span class="badge">${due}</span>` : id === 'tasks' && tk ? `<span class="badge gold">${tk}</span>` : '';
       return `<button class="${view === id ? 'on' : ''}" data-act="go" data-v="${id}">${svgI(ic)}${label}${badge}</button>`;
     }).join('')}</nav>
-    <div class="sidefoot"><small>${new Date().toLocaleDateString('en-GB',{month:'long'})} goal</small><b>${gbp(rev)}</b> <span class="sub">/ ${gbp(st.target)}</span>${bar(rev / st.target * 100)}
+    <div class="sidefoot"><small>${new Date().toLocaleDateString('en-GB',{month:'long'})} revenue</small><b>${gbp(rev)}</b> <span class="sub">/ ${gbp(st.target)}</span>${bar(rev / st.target * 100)}
       <div id="savedAt" class="saved ${storageOK ? '' : 'bad'}">${savedLabel()}</div></div>`;
 }
 
@@ -567,13 +568,20 @@ function nnToggle(id) {
   if (S.nonneg.length && S.nonneg.every(n => a.includes(n.id))) toast('All non-negotiables done. You did what you said you would do. 💪');
 }
 function goalCard() {
-  const st = S.settings, left = diff(today(), st.goalDeadline), rev = monthRev(monthKey());
+  const st = S.settings, left = diff(today(), st.goalDeadline);
+  const cur = st.goalCount || 0, tgt = Math.max(1, st.goalTarget || 1), rem = Math.max(0, tgt - cur), unit = st.goalUnit || '';
   const cls = left < 0 ? 'bad' : left <= 14 ? 'warn' : '';
   const label = left < 0 ? 'deadline passed' : left === 0 ? 'last day. Finish it.' : left === 1 ? 'day left' : 'days left';
+  const pace = rem === 0 ? 'Goal reached 🎯'
+    : left <= 0 ? `${rem} short of the goal`
+    : left < 7 ? `${rem} more needed in ${left} day${left === 1 ? '' : 's'}`
+    : `${rem} more needed · about ${Math.ceil(rem / (left / 7))} a week to get there`;
   return `<div class="card"><h2>My goal <button class="btn sm ghost" data-act="editGoal">Edit</button></h2>
     <div class="gnum ${cls}">${Math.max(0, left)}</div><div class="glabel">${label}${left > 13 ? ` · about ${Math.round(left / 7)} weeks` : ''}</div>
     <div class="gtitle">${esc(st.goalTitle)}</div><div class="sub">Deadline: ${fdateL(st.goalDeadline)}</div>
-    <div style="display:flex;justify-content:space-between;margin-top:14px"><span class="sub">Cash this month</span><b>${gbp(rev)} <span class="sub">/ ${gbp(st.target)}</span></b></div>${bar(rev / st.target * 100)}</div>`;
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:8px"><b style="font:600 20px var(--head)">${cur} <span class="sub" style="font-size:14px">/ ${tgt} ${esc(unit)}</span></b>
+      <span style="display:flex;gap:6px"><button class="btn sm ghost" data-act="goalBump" data-n="-1" aria-label="Minus one">−1</button><button class="btn sm" data-act="goalBump" data-n="1">+1</button></span></div>
+    ${bar(cur / tgt * 100, rem === 0 ? 'g' : '')}<div class="sub" style="margin-top:8px">${pace}</div></div>`;
 }
 function identityCard() {
   const read = S.nonneg.find(n => n.key === 'identity'), isRead = read && isDone(read.id);
@@ -623,11 +631,11 @@ function vToday() {
   <div style="margin-bottom:16px">${missionCard()}</div>
   ${nnCard()}
   <div class="kpis">
-    <div class="kpi"><div class="l">Cash this month</div><div class="v">${gbp(rev)}</div><div class="s">${Math.round(rev / st.target * 100)}% of ${gbp(st.target)} goal</div>${bar(rev / st.target * 100)}</div>
+    <div class="kpi"><div class="l">Cash this month</div><div class="v">${gbp(rev)}</div><div class="s">${Math.round(rev / st.target * 100)}% of ${gbp(st.target)} monthly target</div>${bar(rev / st.target * 100)}</div>
     <button class="kpi ${stuckVal ? 'alert' : ''}" data-act="go" data-v="followups"><div class="l">Money stuck in chats</div><div class="v">${gbp(stuckVal)}</div><div class="s">${stuck.length} ${stuck.length === 1 ? 'person' : 'people'} waiting on you</div></button>
     <button class="kpi" data-act="go" data-v="pipeline"><div class="l">Open pipeline</div><div class="v">${gbp(pipe)}</div><div class="s">${gbp(wtd)} likely · ${open.length} leads</div></button>
     <button class="kpi" data-act="go" data-v="clients"><div class="l">Active clients</div><div class="v">${act.length}</div><div class="s">${ending ? ending + ' finishing now' : 'in the 6-week programme'}</div></button>
-    <div class="kpi"><div class="l">Month forecast</div><div class="v">${gbp(proj)}</div><div class="s">${need ? `Need ${need} more client${need > 1 ? 's' : ''} to hit goal` : 'Goal hit 🎯'}</div></div>
+    <div class="kpi"><div class="l">Month forecast</div><div class="v">${gbp(proj)}</div><div class="s">${need ? `Need ${need} more client${need > 1 ? 's' : ''} to hit your target` : 'Monthly target hit 🎯'}</div></div>
   </div>
   <div class="grid">
     <div class="stack">
@@ -805,7 +813,7 @@ function vRevenue() {
   return `<div class="top"><div><h1>Money</h1><p>Everything coming in, everything going out, and where it's heading.</p></div>
     <div class="acts"><button class="btn" data-act="newPayment">+ Money in</button><button class="btn ghost" data-act="newExpense">+ Money out</button><button class="btn ghost" data-act="newBill">+ Bill</button></div></div>
   <div class="kpis">
-    <div class="kpi"><div class="l">Money in · ${mname(ym)}</div><div class="v">${gbp(rev)}</div><div class="s">${Math.round(rev / st.target * 100)}% of ${gbp(st.target)} goal</div>${bar(rev / st.target * 100)}</div>
+    <div class="kpi"><div class="l">Money in · ${mname(ym)}</div><div class="v">${gbp(rev)}</div><div class="s">${Math.round(rev / st.target * 100)}% of ${gbp(st.target)} monthly target</div>${bar(rev / st.target * 100)}</div>
     <div class="kpi"><div class="l">Money out · ${mname(ym)}</div><div class="v">${gbp(out)}</div><div class="s">${monthExp.length} payments</div></div>
     <div class="kpi ${net < 0 ? 'alert' : ''}"><div class="l">Left over this month</div><div class="v" style="${net >= 0 ? 'color:var(--good)' : ''}">${gbp(net)}</div><div class="s">${net >= 0 ? 'in profit' : 'spending more than you earn'}</div></div>
     <div class="kpi"><div class="l">Bills still to pay</div><div class="v">${gbp(unpaidSum)}</div><div class="s">${unpaid.length} of ${S.bills.length} bills</div></div>
@@ -815,8 +823,8 @@ function vRevenue() {
 
   <div class="sec gold">Money in</div>
   <div class="grid" style="margin-top:8px">
-    <div class="card"><h2>Income, last 6 months <small>dashed line = ${gbp(st.target)}/month goal</small></h2>
-      <div class="chart"><div class="tl" style="bottom:${st.target / mx * (210 - 26)}px"><span>Goal</span></div>
+    <div class="card"><h2>Income, last 6 months <small>dashed line = ${gbp(st.target)}/month target</small></h2>
+      <div class="chart"><div class="tl" style="bottom:${st.target / mx * (210 - 26)}px"><span>Target</span></div>
       ${months.map((m, i) => `<div class="col ${i === 5 ? 'cur' : ''}" title="${mname(m.k)}: ${gbp(m.v)}"><b>${gbp(m.v)}</b><i style="height:${m.v / mx * (210 - 54)}px"></i></div>`).join('')}</div>
       <div class="xl">${months.map(m => `<span>${mname(m.k)}</span>`).join('')}</div></div>
     <div class="card"><h2>Latest payments in</h2>${pays.length ? `<table>${pays.map(p => `<tr><td><b>${esc(p.who)}</b><div class="sub">${fdate(p.date)}${p.note ? ' · ' + esc(p.note) : ''}</div></td><td class="r val">${gbp(p.amount)}</td><td class="r"><button class="x" data-act="delPay" data-id="${p.id}" aria-label="Delete payment">×</button></td></tr>`).join('')}</table>` : '<div class="empty">No payments logged yet.</div>'}</div>
@@ -923,7 +931,7 @@ function vSettings() {
   return `<div class="top"><div><h1>Settings</h1><p>Make it yours. Everything is saved automatically in this browser.</p></div></div>
   <div class="grid"><div class="card"><form data-form="settings">
     <div class="two">${fld('Business name', 'bizName', s.bizName)}${fld('Your first name', 'ownerName', s.ownerName)}</div>
-    <div class="two">${fld('Monthly revenue goal (£)', 'target', s.target, 'number', 'min="0"')}${fld('Main offer price (£)', 'offerPrice', s.offerPrice, 'number', 'min="0"')}</div>
+    <div class="two">${fld('Monthly revenue target (£)', 'target', s.target, 'number', 'min="0"')}${fld('Main offer price (£)', 'offerPrice', s.offerPrice, 'number', 'min="0"')}</div>
     <div class="two">${fld('Chase a lead after (days silent)', 'staleDays', s.staleDays, 'number', 'min="1"')}${fld('Default next follow-up (days)', 'gap', s.gap, 'number', 'min="1"')}</div>
     <div class="sec">Daily targets</div>
     <div class="two">${fld('DMs sent', 'dmTarget', s.dmTarget, 'number', 'min="1"')}${fld('Conversations started', 'convoTarget', s.convoTarget, 'number', 'min="1"')}</div>
@@ -1003,10 +1011,12 @@ function billForm(id) {
     <div class="mfoot">${id ? '<button type="button" class="btn danger l" data-act="delBill" data-id="' + id + '">Delete</button>' : ''}<button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save</button></div></form>`);
 }
 function goalForm() {
-  const s = S.settings;
+  const g = S.settings;
   modal('My goal', `<form data-form="goal">
-    ${fld('What am I going to achieve?', 'goalTitle', s.goalTitle, 'text', 'required')}
-    <div class="two">${fld('Deadline', 'goalDeadline', s.goalDeadline, 'date', 'required')}${fld('Monthly revenue goal (£)', 'target', s.target, 'number', 'min="1"')}</div>
+    ${fld('What am I going to achieve?', 'goalTitle', g.goalTitle, 'text', 'required')}
+    ${fld('Deadline', 'goalDeadline', g.goalDeadline, 'date', 'required')}
+    <div class="two">${fld('Target number', 'goalTarget', g.goalTarget, 'number', 'min="1" required')}${fld('What are we counting?', 'goalUnit', g.goalUnit, 'text', 'placeholder="e.g. purchases, clients, calls"')}</div>
+    ${fld('How many so far?', 'goalCount', g.goalCount, 'number', 'min="0"')}
     <div class="mfoot"><button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save goal</button></div></form>`);
 }
 function identityForm() {
@@ -1068,6 +1078,7 @@ document.addEventListener('click', e => {
     case 'newBill': billForm(); break;
     case 'editBill': billForm(id); break;
     case 'editGoal': goalForm(); break;
+    case 'goalBump': { const g = S.settings; g.goalCount = Math.max(0, (g.goalCount || 0) + +el.dataset.n); save(); render(); if (g.goalCount === g.goalTarget && +el.dataset.n > 0) toast('Goal hit! 🎯'); break; }
     case 'editIdentity': identityForm(); break;
     case 'editMission': missionForm(); break;
     case 'nnToggle': nnToggle(id); break;
@@ -1146,7 +1157,7 @@ document.addEventListener('submit', e => {
     if (id) Object.assign(S.bills.find(x => x.id === id), data); else S.bills.push({id:uid(), ...data});
     save(); closeModal(); render();
   } else if (kind === 'goal') {
-    Object.assign(S.settings, {goalTitle:f.goalTitle.trim(), goalDeadline:f.goalDeadline, target:Math.max(1, +f.target || S.settings.target)});
+    Object.assign(S.settings, {goalTitle:f.goalTitle.trim(), goalDeadline:f.goalDeadline, goalTarget:Math.max(1, +f.goalTarget || 1), goalUnit:(f.goalUnit || '').trim(), goalCount:Math.max(0, +f.goalCount || 0)});
     save(); closeModal(); render(); toast('Goal saved');
   } else if (kind === 'identity') {
     S.identity = f.identity.trim() || DEFAULT_IDENTITY; save(); closeModal(); render(); toast('Identity statement saved');
