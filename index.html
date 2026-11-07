@@ -190,6 +190,17 @@ td.r,th.r{text-align:right}
 .ident{background:linear-gradient(135deg,rgba(202,163,28,.14),rgba(202,163,28,.03));border-color:var(--line2)}
 .idtext{font:500 17px/1.7 var(--head);margin:4px 0 16px}
 .mission{border-color:var(--line2);background:linear-gradient(135deg,rgba(255,255,255,.04),rgba(202,163,28,.08))}
+.crow{display:grid;grid-template-columns:110px 1fr auto;gap:14px;align-items:center;padding:14px 16px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;background:var(--panel2)}
+.crow.today{border-color:var(--gold);background:rgba(202,163,28,.08)}
+.crow.restday{opacity:.6}
+.cday{display:flex;flex-direction:column;gap:2px;align-items:flex-start}
+.cday b{font:600 16px var(--head)}
+.cmain{display:flex;flex-direction:column;gap:5px;align-items:flex-start;min-width:0}
+.cpiece .sub{display:inline-block;min-width:54px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;font-size:11px}
+.cticks{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
+.ctick{border:1px solid var(--line);background:none;border-radius:9px;padding:6px 13px;font-weight:700;font-size:12.5px;color:var(--muted)}
+.ctick:hover{border-color:var(--line2)}
+.ctick.done{background:var(--good);border-color:var(--good);color:#04180f}
 .sunbtn{background:none;border:1px solid var(--line);color:var(--dim);border-radius:7px;font-size:11px;font-weight:700;padding:2px 8px}
 .sunbtn:hover{border-color:var(--line2)}
 .sunbtn.on{background:rgba(202,163,28,.2);border-color:var(--line2);color:var(--gold2)}
@@ -215,7 +226,7 @@ td.r,th.r{text-align:right}
 .catrow{display:grid;grid-template-columns:120px 1fr 96px;gap:10px;align-items:center;padding:5px 0}
 .catrow .bar{margin:0}
 @media(max-width:1000px){.grid{grid-template-columns:1fr}}
-@media(max-width:700px){.nnl{grid-template-columns:1fr}.nnl .row:nth-child(2){border-top:1px solid var(--line)}.gnum{font-size:60px}.catrow{grid-template-columns:90px 1fr 80px}}
+@media(max-width:700px){.crow{grid-template-columns:1fr}.cticks{justify-content:flex-start}.nnl{grid-template-columns:1fr}.nnl .row:nth-child(2){border-top:1px solid var(--line)}.gnum{font-size:60px}.catrow{grid-template-columns:90px 1fr 80px}}
 @media(max-width:900px){
   .app{grid-template-columns:minmax(0,1fr)}
   .side{position:static;height:auto;flex-direction:row;align-items:center;padding:10px 12px;gap:10px;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line)}
@@ -267,6 +278,8 @@ function rel(s) {
 /* Sunday is the day of rest: nothing is required, and streaks skip it instead of breaking */
 const isSunday = (d = today()) => parse(d).getDay() === 0;
 const noSun = d => isSunday(d) ? addDays(d, 1) : d;
+const dow = d => parse(d).getDay() || 7;            // Monday = 1 ... Sunday = 7
+const weekStart = d => addDays(d, 1 - dow(d));       // the Monday of that week
 
 /* ================= model ================= */
 const STAGES = [
@@ -302,7 +315,19 @@ const DEFAULT_SETTINGS = {
 };
 const DEFAULT_IDENTITY = "I am a man of faith, discipline and action.\nI do the hard things first and I keep my word to myself.\nI serve every client with total integrity, and I show up every single day: I make the calls, I follow up, I lead by example.\nI am building Soul Ark Scale and I will not stop until I have proven it works.\nThis is who I am.";
 const DEFAULT_MISSION = "To help men around the world rebuild their lives through faith, strength and brotherhood, and to show other coaches how to scale their impact with integrity.";
-const EXP_CATS =['Bills','Business & software','Marketing','Food','Transport','Personal','Giving','Other'];
+const DAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const TAGS = {sales:['Sales day','decide'], icp:['ICP','convo'], reach:['Reach','booked'], client:['Client proof','won'], story:['My story','won'], rest:['Rest','dm']};
+const defaultSchedule = () => [
+  {d:1, tag:'icp',   piece:'ICP reel (their pain, your hook)',          stories:'Talking to your ICP'},
+  {d:2, tag:'sales', piece:'Sales: join the community',                 stories:'Sales stories, direct offer + webinar'},
+  {d:3, tag:'reach', piece:'Reach reel (opinion / viral style)',        stories:'Talking to your ICP'},
+  {d:4, tag:'client',piece:'Client story or journey',                   stories:'Client proof'},
+  {d:5, tag:'sales', piece:'Sales: work with me (mentorship)',          stories:'Sales stories, direct offer + webinar'},
+  {d:6, tag:'story', piece:'Your story and testimonial: what changed',  stories:'Your story'},
+  {d:7, tag:'rest',  piece:'Rest',                                      stories:'Rest'},
+];
+const WEEKLY = [['yt','YouTube videos',3,true], ['clip','Clipping session',1,true], ['sales','Sales days (post + stories)',2,false], ['client','Client story',1,false], ['story','Your own story',1,false]];
+const EXP_CATS = ['Bills','Business & software','Marketing','Food','Transport','Personal','Giving','Other'];
 const defaultNonneg = () => [
   {id:uid(), key:'identity', title:'Read my identity statement out loud'},
   {id:uid(), title:'Prayer / time with God'},
@@ -319,7 +344,7 @@ let S = loadState();
 
 function blank() {
   return {settings:{...DEFAULT_SETTINGS, goalDeadline:addDays(today(), 90)}, leads:[], clients:[], tasks:[], payments:[], daily:{}, proof:{},
-    expenses:[], bills:[], identity:DEFAULT_IDENTITY, mission:DEFAULT_MISSION, nonneg:defaultNonneg(), nonnegDone:{}};
+    expenses:[], bills:[], identity:DEFAULT_IDENTITY, mission:DEFAULT_MISSION, nonneg:defaultNonneg(), nonnegDone:{}, schedule:defaultSchedule(), contentLog:{}, weekly:{}};
 }
 function loadState() {
   let raw = null;
@@ -361,7 +386,7 @@ function save() {
 function sampleData(keep) {
   const t = today(), s = blank();
   s.settings.sample = true;
-  if (keep) { s.settings = {...keep.settings, sample:true}; s.identity = keep.identity; s.mission = keep.mission; s.nonneg = keep.nonneg; } // keep the personal bits (goal, identity, non-negotiables)
+  if (keep) { s.settings = {...keep.settings, sample:true}; s.identity = keep.identity; s.mission = keep.mission; s.nonneg = keep.nonneg; s.schedule = keep.schedule; } // keep the personal bits (goal, identity, non-negotiables)
   const hist = (final, createdAgo, lastAgo, lostFrom) => {
     const path = ORDER.slice(0, ORDER.indexOf(final === 'lost' ? lostFrom : final) + 1);
     const span = Math.max(createdAgo - lastAgo, 0);
@@ -445,6 +470,10 @@ function sampleData(keep) {
     const c = cats[i % 7];
     s.expenses.push({id:uid(), date:addDays(t, -i), amount:[14,22,9,31,12,48,19][i % 7] + (i * 7) % 11, cat:c, note:notes[c], billId:''});
   }
+  /* content posted so far this week */
+  const ws = weekStart(t);
+  for (let i = 1; i <= 6; i++) { const d = addDays(ws, i - 1); if (d < t) s.contentLog[d] = {piece:true, stories:i !== 4}; }
+  s.weekly[ws] = {yt:2, clip:1};
   /* non-negotiable history so the streak shows */
   const ids = s.nonneg.map(n => n.id);
   for (let i = 1; i <= 4; i++) s.nonnegDone[addDays(t, -i)] = [...ids];
@@ -485,6 +514,7 @@ function reached(l, sid) {
 
 /* ================= icons / ui bits ================= */
 const ICON = {
+  film:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/>',
   home:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
   funnel:'<path d="M3 4h18l-7 8v6l-4 2v-8z"/>',
   bell:'<path d="M6 8a6 6 0 0112 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 004 0"/>',
@@ -517,7 +547,7 @@ function closeModal() {
 }
 
 /* ================= views ================= */
-const NAV = [['today','Today','home'],['pipeline','Pipeline','funnel'],['followups','Follow-ups','bell'],['clients','Clients','users'],['tasks','To-do','check'],['revenue','Money','pound'],['proof','Proof Engine','trophy'],['settings','Settings','cog']];
+const NAV = [['today','Today','home'],['content','Content schedule','film'],['pipeline','Pipeline','funnel'],['followups','Follow-ups','bell'],['clients','Clients','users'],['tasks','To-do','check'],['revenue','Money','pound'],['proof','Proof Engine','trophy'],['settings','Settings','cog']];
 let view = (location.hash || '').replace('#', '') || 'today';
 if (!NAV.some(n => n[0] === view)) view = 'today';
 let proofRange = 90, taskFilter = 'All';
@@ -537,7 +567,7 @@ function renderSide() {
 
 function render() {
   renderSide();
-  const fn = {today:vToday, pipeline:vPipeline, followups:vFollow, clients:vClients, tasks:vTasks, revenue:vRevenue, proof:vProof, settings:vSettings}[view];
+  const fn = {today:vToday, content:vContent, pipeline:vPipeline, followups:vFollow, clients:vClients, tasks:vTasks, revenue:vRevenue, proof:vProof, settings:vSettings}[view];
   const banner = S.settings.sample ? `<div class="banner"><span><b>You're looking at sample data</b> — so you can see how everything works.</span><button class="btn sm" data-act="clearSample">Clear it &amp; start fresh</button></div>` : '';
   $('#main').innerHTML = banner + fn();
   restoreDrafts($('#main'));
@@ -628,6 +658,11 @@ function nnCard() {
     <form data-form="nn" class="inline" style="margin-top:12px"><input name="title" placeholder="Add a non-negotiable…" required><button class="btn sm">Add</button></form>
     <div class="sub" style="margin-top:8px">Runs Monday to Saturday. Tap <b>Sun</b> on any item you want to keep doing on Sundays too.</div></div>`;
 }
+function contentTodayCard() {
+  const t = today(), e = schedFor(t), rest = e.tag === 'rest';
+  return `<div class="card" style="margin-bottom:16px"><h2><span>Today's content <span class="chip" data-s="${TAGS[e.tag][1]}">${TAGS[e.tag][0]}</span></span><button class="btn sm ghost" data-act="go" data-v="content">Full schedule</button></h2>
+    ${rest ? '<div class="sub" style="color:var(--text)">Sunday is a day of rest. No posting today. 🙏</div>' : `<div class="crow" style="margin:0;border:0;padding:0;background:none;grid-template-columns:1fr auto"><div class="cmain"><div class="cpiece"><span class="sub">Post</span> ${esc(e.piece)}</div><div class="cpiece"><span class="sub">Stories</span> ${esc(e.stories)}</div></div><div class="cticks">${tickBtns(t)}</div></div>`}</div>`;
+}
 function vToday() {
   const t = today(), st = S.settings, rev = monthRev(monthKey());
   const stuck = stuckLeads(), stuckVal = sum(stuck, 'value');
@@ -657,6 +692,7 @@ function vToday() {
   <div class="grid" style="margin-bottom:16px">${identityCard()}${goalCard()}</div>
   <div style="margin-bottom:16px">${missionCard()}</div>
   ${nnCard()}
+  ${contentTodayCard()}
   <div class="kpis">
     <div class="kpi"><div class="l">Cash this month</div><div class="v">${gbp(rev)}</div><div class="s">${Math.round(rev / st.target * 100)}% of ${gbp(st.target)} monthly target</div>${bar(rev / st.target * 100)}</div>
     <button class="kpi ${stuckVal ? 'alert' : ''}" data-act="go" data-v="followups"><div class="l">Money stuck in chats</div><div class="v">${gbp(stuckVal)}</div><div class="s">${stuck.length} ${stuck.length === 1 ? 'person' : 'people'} waiting on you</div></button>
@@ -686,6 +722,42 @@ function vToday() {
         ${wk.length ? wk.map(c => `<div class="row"><div class="grow"><b>${esc(c.name)}</b> ${c.health === 'risk' ? '<span class="chip bad">At risk</span>' : ''}${clientWeek(c) >= 6 ? ' <span class="chip warn">Final week</span>' : ''}
           <div class="sub">Week ${Math.min(clientWeek(c), 6)} of 6${c.nextSession ? ' · session ' + rel(c.nextSession) : ''}</div></div><button class="btn sm ghost" data-act="editClient" data-id="${c.id}">Open</button></div>`).join('') : '<div class="empty">Nothing urgent.</div>'}</div>
     </div>
+  </div>`;
+}
+
+/* ---------- CONTENT SCHEDULE ---------- */
+let contentWeek = 0;
+const schedFor = d => S.schedule.find(x => x.d === dow(d)) || {d:dow(d), tag:'rest', piece:'', stories:''};
+function tickBtns(d) {
+  const l = S.contentLog[d] || {};
+  return `<button class="ctick ${l.piece ? 'done' : ''}" data-act="contentTick" data-date="${d}" data-k="piece">${l.piece ? '✓ ' : ''}Posted</button><button class="ctick ${l.stories ? 'done' : ''}" data-act="contentTick" data-date="${d}" data-k="stories">${l.stories ? '✓ ' : ''}Stories</button>`;
+}
+function vContent() {
+  const t = today(), base = addDays(weekStart(t), contentWeek * 7), days = [...Array(7)].map((_, i) => addDays(base, i));
+  const wk = S.weekly[base] || {}, cnt = {sales:0, client:0, story:0};
+  days.forEach(d => { const e = schedFor(d), l = S.contentLog[d] || {};
+    if (e.tag === 'sales' && l.piece && l.stories) cnt.sales++;
+    if (e.tag === 'client' && l.piece) cnt.client++;
+    if (e.tag === 'story' && l.piece) cnt.story++; });
+  const val = k => (k === 'yt' || k === 'clip') ? (wk[k] || 0) : cnt[k];
+  const label = contentWeek === 0 ? 'This week' : contentWeek === -1 ? 'Last week' : contentWeek === 1 ? 'Next week' : `Week of ${fdate(base)}`;
+  return `<div class="top"><div><h1>Content schedule</h1><p>One solid piece a day (reel, carousel or post) plus daily stories. Sunday is rest.</p></div>
+    <div class="acts"><button class="btn ghost" data-act="weekNav" data-n="-1">‹ Previous</button><button class="btn ghost" data-act="weekNav" data-n="0">This week</button><button class="btn ghost" data-act="weekNav" data-n="1">Next ›</button></div></div>
+  <div class="sec gold" style="margin-top:0">${label} · ${fdate(days[0])} to ${fdate(days[6])}</div>
+  <div class="kpis" style="margin-top:8px">${WEEKLY.map(([k, name, tgt, manual]) => { const v = val(k);
+    return `<div class="kpi"><div class="l">${name}</div><div class="v">${v} <span class="sub" style="font-size:15px">/ ${tgt}</span></div>${bar(v / tgt * 100, v >= tgt ? 'g' : '')}
+      ${manual ? `<div class="inline" style="margin-top:10px;gap:6px"><button class="btn sm ghost" data-act="wkBump" data-k="${k}" data-n="-1" style="flex:none;min-width:0">−1</button><button class="btn sm" data-act="wkBump" data-k="${k}" data-n="1" style="flex:none;min-width:0">+1</button></div>` : '<div class="s" style="margin-top:8px">counts automatically</div>'}</div>`; }).join('')}</div>
+  <div class="card"><h2>The week <small>tick off each day as you post · Edit changes that day every week</small></h2>
+    ${days.map(d => { const e = schedFor(d), rest = e.tag === 'rest', isT = d === t;
+      return `<div class="crow ${isT ? 'today' : ''} ${rest ? 'restday' : ''}">
+        <div class="cday"><b>${DAY_NAMES[dow(d) - 1].slice(0, 3)}</b><span class="sub">${parse(d).getDate()} ${mname(d.slice(0, 7))}</span>${isT ? '<span class="chip warn">Today</span>' : ''}</div>
+        <div class="cmain"><span class="chip" data-s="${TAGS[e.tag][1]}">${TAGS[e.tag][0]}</span>
+          <div class="cpiece"><span class="sub">Post</span> ${esc(e.piece)}</div>
+          <div class="cpiece"><span class="sub">Stories</span> ${esc(e.stories)}</div></div>
+        <div class="cticks">${rest ? '<span class="sub">Day of rest 🙏</span>' : tickBtns(d)}<button class="btn sm ghost" data-act="editDay" data-id="${e.d}">Edit</button></div></div>`; }).join('')}</div>
+  <div class="grid" style="margin-top:16px">
+    <div class="card"><h2>Every day</h2><div class="sub" style="color:var(--text);line-height:1.7">Routine stories: working out, praying, journalling, client calls, posting in the community.<br>Your captions should say what you do, who you help, what you offer, your opinions and your everyday life.</div></div>
+    <div class="card"><h2>Batching</h2><div class="sub" style="color:var(--text);line-height:1.7">Film your 3 YouTube videos in one sitting, then clip 6+ reels from them in one session. Each video also goes inside Soul Ark as a masterclass. Use a carousel on sales days to explain exactly what people get.</div></div>
   </div>`;
 }
 
@@ -1060,6 +1132,16 @@ function missionForm() {
     <div class="mfoot"><button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save</button></div></form>`);
 }
 
+function dayForm(id) {
+  const e = S.schedule.find(x => x.d === +id); if (!e) return;
+  modal('Edit ' + DAY_NAMES[e.d - 1], `<form data-form="day" data-id="${e.d}">
+    <p class="sub" style="margin-bottom:10px">This changes ${DAY_NAMES[e.d - 1]} every week.</p>
+    ${sel('Type of day', 'tag', Object.entries(TAGS).map(([k, v]) => [k, v[0]]), e.tag)}
+    ${fld('Post (reel / carousel / post)', 'piece', e.piece)}
+    ${fld('Stories', 'stories', e.stories)}
+    <div class="mfoot"><button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save</button></div></form>`);
+}
+
 /* ================= actions ================= */
 function applyStage(l, stage) {
   const t = today();
@@ -1108,6 +1190,10 @@ document.addEventListener('click', e => {
     case 'goalBump': { const g = S.settings; g.goalCount = Math.max(0, (g.goalCount || 0) + +el.dataset.n); save(); render(); if (g.goalCount === g.goalTarget && +el.dataset.n > 0) toast('Goal hit! 🎯'); break; }
     case 'editIdentity': identityForm(); break;
     case 'editMission': missionForm(); break;
+    case 'editDay': dayForm(id); break;
+    case 'contentTick': { const d = el.dataset.date, l = S.contentLog[d] = S.contentLog[d] || {}; l[el.dataset.k] = !l[el.dataset.k]; save(); render(); break; }
+    case 'weekNav': contentWeek = +el.dataset.n === 0 ? 0 : contentWeek + +el.dataset.n; render(); break;
+    case 'wkBump': { const b = addDays(weekStart(today()), contentWeek * 7), w = S.weekly[b] = S.weekly[b] || {yt:0, clip:0}; w[el.dataset.k] = Math.max(0, (w[el.dataset.k] || 0) + +el.dataset.n); save(); render(); break; }
     case 'nnToggle': nnToggle(id); break;
     case 'nnSun': { const n = S.nonneg.find(x => x.id === id); n.sun = !n.sun; save(); render(); break; }
     case 'nnDel': S.nonneg = S.nonneg.filter(x => x.id !== id); save(); render(); break;
@@ -1129,7 +1215,7 @@ document.addEventListener('click', e => {
     case 'proofToggle': S.proof[el.dataset.k] = !S.proof[el.dataset.k]; save(); render(); break;
     case 'copyTmpl': { const txt = TEMPLATES[+el.dataset.i][1].replace(/\{name\}/g, '[name]'); (navigator.clipboard?.writeText(txt) || Promise.reject()).then(() => toast('Copied — swap [name] for theirs'), () => toast('Copy blocked by browser — select the text instead')); break; }
     case 'clearSample': if (confirm('Delete all sample data and start with a blank dashboard? (Your goal, identity statement and non-negotiables are kept.)')) {
-      const n = blank(); n.settings = {...S.settings, sample:false}; n.identity = S.identity; n.mission = S.mission; n.nonneg = S.nonneg; S = n; save(); render(); toast('Fresh start. Add your first lead!'); } break;
+      const n = blank(); n.settings = {...S.settings, sample:false}; n.identity = S.identity; n.mission = S.mission; n.nonneg = S.nonneg; n.schedule = S.schedule; S = n; save(); render(); toast('Fresh start. Add your first lead!'); } break;
     case 'loadSample': if (confirm('Replace everything with sample data? (Your goal, identity statement and non-negotiables are kept.)')) { S = sampleData(S); save(); render(); } break;
     case 'wipe': if (confirm('Delete ALL your data? Export a backup first if you are unsure. This cannot be undone.')) { S = blank(); save(); render(); toast('Everything deleted'); } break;
     case 'export': {
@@ -1189,6 +1275,8 @@ document.addEventListener('submit', e => {
     save(); closeModal(); render(); toast('Goal saved');
   } else if (kind === 'identity') {
     S.identity = f.identity.trim() || DEFAULT_IDENTITY; save(); closeModal(); render(); toast('Identity statement saved');
+  } else if (kind === 'day') {
+    Object.assign(S.schedule.find(x => x.d === +id), {tag:f.tag, piece:f.piece.trim(), stories:f.stories.trim()}); save(); closeModal(); render();
   } else if (kind === 'mission') {
     S.mission = f.mission.trim() || DEFAULT_MISSION; save(); closeModal(); render(); toast('Mission statement saved');
   } else if (kind === 'nn') {
@@ -1230,7 +1318,7 @@ function restoreDrafts(root) {
   });
 }
 /* remember which pop-up is open, so a refresh reopens it with your text still in it */
-['leadForm','clientForm','payForm','expenseForm','billForm','goalForm','identityForm','missionForm','winForm','lostForm'].forEach(name => {
+['leadForm','clientForm','payForm','expenseForm','billForm','goalForm','identityForm','missionForm','dayForm','winForm','lostForm'].forEach(name => {
   const orig = window[name];
   window[name] = function (id) { drafts.__modal = {name, id}; saveDrafts(); return orig(id); };
 });
