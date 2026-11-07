@@ -568,6 +568,7 @@ function toast(msg) {
 function modal(title, body) {
   $('#modal').innerHTML = `<div class="mback" data-act="closeModal"><div class="mbox" role="dialog" aria-modal="true"><div class="mhead"><h3>${title}</h3><button class="x" data-act="closeModal" aria-label="Close">×</button></div>${body}</div></div>`;
   restoreDrafts($('#modal'));
+  $('#modal').querySelectorAll('select[name=freq]').forEach(x => x.dispatchEvent(new Event('change', {bubbles:true})));
   const f = $('#modal input:not([type=hidden]):not([type=checkbox]), #modal select'); if (f) f.focus();
 }
 function closeModal() {
@@ -1141,7 +1142,7 @@ function clientForm(id) {
 function payForm() {
   const offers = S.settings.offers;
   modal('Log money in', `<form data-form="payment">
-    ${sel('Type of income', 'kind', [['business', 'Business sale'], ['other', 'Other income (rental, etc.)']], 'business')}
+    ${sel('Type of income', 'kind', [['business', 'Coaching / business sale'], ['other', 'Other income (rental, etc.)']], 'business')}
     ${sel('What was bought?', 'offer', [['', 'Other / not one of my offers'], ...offers.map(o => [o.id, o.name + ' · ' + gbp(o.price)])], offers[0].id)}
     <div class="two">${fld('Date', 'date', today(), 'date', 'required')}${fld('Amount (' + CUR + ')', 'amount', offers[0].price, 'number', 'min="1" required')}</div>
     <label class="fld"><span>From</span><select name="clientId"><option value="">Someone else…</option>${S.clients.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label>
@@ -1213,11 +1214,14 @@ function dayForm(id) {
 }
 
 function incomeForm(id) {
-  const i = id ? S.income.find(x => x.id === id) : {name:'', amount:'', day:1};
-  modal(id ? 'Edit income' : 'New regular income', `<form data-form="income" data-id="${id || ''}">
+  const editing = !!id, i = editing ? S.income.find(x => x.id === id) : {name:'', amount:'', day:1};
+  modal(editing ? 'Edit regular income' : 'Add other income', `<form data-form="income" data-id="${id || ''}">
     ${fld('Name', 'name', i.name, 'text', 'required placeholder="e.g. Rental income (England)"')}
-    <div class="two">${fld('Amount per month (' + CUR + ')', 'amount', i.amount, 'number', 'min="0.01" step="0.01" required')}${fld('Usually arrives on day', 'day', i.day, 'number', 'min="1" max="31" required')}</div>
-    <div class="mfoot">${id ? '<button type="button" class="btn danger l" data-act="delIncome" data-id="' + id + '">Delete</button>' : ''}<button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save</button></div></form>`);
+    <div class="two">${fld('Amount (' + CUR + ')', 'amount', i.amount, 'number', 'min="0.01" step="0.01" required')}${editing ? '' : sel('How often?', 'freq', [['monthly', 'Every month'], ['once', 'One-off']], 'monthly')}</div>
+    <div data-when="monthly">${fld('Arrives on day of the month', 'day', i.day, 'number', 'min="1" max="31"')}</div>
+    <div data-when="once" hidden>${fld('Date received', 'date', today(), 'date')}</div>
+    <p class="sub" style="margin-bottom:10px">Separate from your coaching income, so it never counts toward your business target or goal.</p>
+    <div class="mfoot">${editing ? '<button type="button" class="btn danger l" data-act="delIncome" data-id="' + id + '">Delete</button>' : ''}<button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save</button></div></form>`);
 }
 
 /* ================= actions ================= */
@@ -1368,8 +1372,13 @@ document.addEventListener('submit', e => {
     save(); closeModal(); render();
   } else if (kind === 'income') {
     const data = {name:f.name.trim(), amount:+f.amount || 0, day:Math.min(31, Math.max(1, +f.day || 1))};
-    if (id) Object.assign(S.income.find(x => x.id === id), data); else S.income.push({id:uid(), ...data});
-    save(); closeModal(); render();
+    if (!id && f.freq === 'once') {
+      S.payments.push({id:uid(), date:f.date || t, who:data.name, amount:data.amount, note:'Other income', offer:'', counted:false, kind:'other', clientId:''});
+      save(); closeModal(); render(); toast('Other income logged');
+    } else {
+      if (id) Object.assign(S.income.find(x => x.id === id), data); else S.income.push({id:uid(), ...data});
+      save(); closeModal(); render(); toast(id ? 'Saved' : `Added. It repeats on the ${ord(data.day)} of every month`);
+    }
   } else if (kind === 'goal') {
     Object.assign(S.settings, {goalTitle:f.goalTitle.trim(), goalDeadline:f.goalDeadline, goalTarget:Math.max(1, +f.goalTarget || 1), goalUnit:(f.goalUnit || '').trim(), goalCount:Math.max(0, +f.goalCount || 0)});
     save(); closeModal(); render(); toast('Goal saved');
@@ -1437,14 +1446,16 @@ window.addEventListener('pagehide', save);
 window.addEventListener('storage', e => { if (e.key === KEY && e.newValue) { try { S = migrate(JSON.parse(e.newValue)); render(); } catch (x) {} } });
 
 document.addEventListener('change', e => {
-  const t = e.target; if (!t || (t.name !== 'offer' && t.name !== 'kind')) return;
+  const t = e.target; if (!t || (t.name !== 'offer' && t.name !== 'kind' && t.name !== 'freq')) return;
   const f = t.closest('form'); if (!f) return;
   const fire = el => el && el.dispatchEvent(new Event('input', {bubbles:true}));
-  if (t.name === 'kind') {   // business sale vs other income
+  if (t.name === 'kind') {   // coaching sale vs other income
     if (f.dataset.form !== 'payment') return;
-    const first = S.settings.offers[0];
-    if (t.value === 'other') { f.elements.offer.value = ''; fire(f.elements.offer); f.elements.counts.checked = false; fire(f.elements.counts); }
-    else { f.elements.offer.value = first.id; fire(f.elements.offer); f.elements.amount.value = first.price; fire(f.elements.amount); f.elements.counts.checked = true; fire(f.elements.counts); }
+    if (t.value === 'other') { closeModal(); incomeForm(); }
+    return;
+  }
+  if (t.name === 'freq') {   // monthly shows the day, one-off shows the date
+    f.querySelectorAll('[data-when]').forEach(d => { d.hidden = d.dataset.when !== t.value; });
     return;
   }
   if (f.dataset.form === 'lead' && t.value && f.elements.value) { f.elements.value.value = offerPrice(t.value); fire(f.elements.value); }
