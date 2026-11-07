@@ -329,12 +329,15 @@ const defaultSchedule = () => [
 const WEEKLY = [['yt','YouTube videos',3,true], ['clip','Clipping session',1,true], ['sales','Sales days (post + stories)',2,false], ['client','Client story',1,false], ['story','Your own story',1,false]];
 const EXP_CATS = ['Bills','Business & software','Marketing','Food','Transport','Personal','Giving','Other'];
 const defaultNonneg = () => [
+  {id:uid(), title:'Explosive movement'},
   {id:uid(), key:'identity', title:'Read my identity statement out loud'},
-  {id:uid(), title:'Prayer / time with God'},
-  {id:uid(), title:'Hit my daily DM target'},
-  {id:uid(), title:'Follow up with every lead that has gone quiet'},
-  {id:uid(), title:'Create content (post or video)'},
-  {id:uid(), title:'Train / move my body'},
+  {id:uid(), title:'Prayer and journal'},
+  {id:uid(), auto:'piece',   title:'Post 1 solid piece (reel, carousel or post)'},
+  {id:uid(), auto:'stories', title:"Post today's stories (routine + the day's type)"},
+  {id:uid(), auto:'dms',     title:'Send 20 personalised DMs (webinar invite + a question)'},
+  {id:uid(), title:'Follow up with every warm conversation and offer calls'},
+  {id:uid(), title:'Post in the Soul Ark community'},
+  {id:uid(), title:'Log my numbers (2 minutes)'},
 ];
 const KEY = 'coachos.v1';
 const SNAP = KEY + '.snap.';      // automatic daily backups
@@ -344,7 +347,7 @@ let S = loadState();
 
 function blank() {
   return {settings:{...DEFAULT_SETTINGS, goalDeadline:addDays(today(), 90)}, leads:[], clients:[], tasks:[], payments:[], daily:{}, proof:{},
-    expenses:[], bills:[], identity:DEFAULT_IDENTITY, mission:DEFAULT_MISSION, nonneg:defaultNonneg(), nonnegDone:{}, schedule:defaultSchedule(), contentLog:{}, weekly:{}};
+    expenses:[], bills:[], identity:DEFAULT_IDENTITY, mission:DEFAULT_MISSION, nonneg:defaultNonneg(), nonnegVersion:2, nonnegDone:{}, schedule:defaultSchedule(), contentLog:{}, weekly:{}};
 }
 function loadState() {
   let raw = null;
@@ -368,6 +371,7 @@ function migrate(o) {
   const s = {...b, ...o, settings:{...b.settings, ...(o.settings||{})}};
   if (s.settings.bizName === 'Soul Ark') s.settings.bizName = 'Soul Ark Scale'; // rebrand of earlier saved data
   s.tasks.forEach(t => { t.cat = CAT_RENAME[t.cat] || t.cat; });
+  if ((o.nonnegVersion || 0) < 2) { s.nonneg = defaultNonneg(); s.nonnegVersion = 2; } // one-time: the agreed 9 non-negotiables
   if (s.settings.goalTitle === 'Hit £5K/month with the 6-week mentorship') s.settings.goalTitle = DEFAULT_SETTINGS.goalTitle; // goal is purchases, not £
   s.leads.forEach(l => { l.history = l.history || [{stage:l.stage, date:l.created || today()}]; l.created = l.created || l.history[0].date; });
   if (s.settings.sample && !(o.expenses && o.expenses.length)) { const sm = sampleData(); s.expenses = sm.expenses; s.bills = sm.bills; } // older sample data had no spending
@@ -456,7 +460,7 @@ function sampleData(keep) {
   T('Outline the Scale Mentorship (2027 launch)','Admin',10,'low');
   T('Post 3 Instagram stories','Content',0,'low','daily',true);
 
-  const dms = [18,22,25,12,20,26,9,21,24,20,17,23,19,11];
+  const dms = [18,22,25,12,20,26,9,21,24,20,21,23,22,11];
   dms.forEach((n, i) => { s.daily[addDays(t, -(dms.length - 1 - i))] = {dms:n, content:i % 3 === 0 ? 0 : 1}; });
 
   /* money out: monthly bills (paid up to today) + everyday spending */
@@ -472,7 +476,7 @@ function sampleData(keep) {
   }
   /* content posted so far this week */
   const ws = weekStart(t);
-  for (let i = 1; i <= 6; i++) { const d = addDays(ws, i - 1); if (d < t) s.contentLog[d] = {piece:true, stories:i !== 4}; }
+  for (let i = 1; i <= 6; i++) { const d = addDays(ws, i - 1); if (d < t) s.contentLog[d] = {piece:true, stories:true}; }
   s.weekly[ws] = {yt:2, clip:1};
   /* non-negotiable history so the streak shows */
   const ids = s.nonneg.map(n => n.id);
@@ -594,12 +598,15 @@ function taskRow(t) {
     <button class="x" data-act="delTask" data-id="${t.id}" aria-label="Delete task">×</button></div>`;
 }
 const fdateL = s => parse(s).toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric'});
-const isDone = id => (S.nonnegDone[today()] || []).includes(id);
+const doneOn = (item, d) => item.auto === 'dms' ? (((S.daily[d] || {}).dms) || 0) >= S.settings.dmTarget
+  : item.auto ? !!(S.contentLog[d] || {})[item.auto]
+  : (S.nonnegDone[d] || []).includes(item.id);
+const isDone = id => { const n = S.nonneg.find(x => x.id === id); return n ? doneOn(n, today()) : false; };
 const nnApplies = (item, d) => !isSunday(d) || !!item.sun;
 function nnStreak() {
   if (!S.nonneg.length) return 0;
   const items = d => S.nonneg.filter(i => nnApplies(i, d));
-  const ok = d => items(d).every(i => (S.nonnegDone[d] || []).includes(i.id));
+  const ok = d => items(d).every(i => doneOn(i, d));
   let d = today(), n = 0, guard = 0;
   if (items(d).length && !ok(d)) d = addDays(d, -1); // today is still in progress
   while (guard++ < 3650) {
@@ -610,11 +617,13 @@ function nnStreak() {
   return n;
 }
 function nnToggle(id) {
-  const t = today(), a = S.nonnegDone[t] = S.nonnegDone[t] || [], i = a.indexOf(id);
-  if (i >= 0) a.splice(i, 1); else a.push(id);
+  const t = today(), n = S.nonneg.find(x => x.id === id);
+  if (n && n.auto === 'dms') { toast('This ticks itself when your DM count reaches ' + S.settings.dmTarget + '. Use the + buttons on the scorecard.'); return; }
+  if (n && n.auto) { const l = S.contentLog[t] = S.contentLog[t] || {}; l[n.auto] = !l[n.auto]; }   // shares the tick with the Content schedule
+  else { const a = S.nonnegDone[t] = S.nonnegDone[t] || [], i = a.indexOf(id); if (i >= 0) a.splice(i, 1); else a.push(id); }
   save(); render();
-  const active = S.nonneg.filter(n => nnApplies(n, t));
-  if (active.length && active.every(n => a.includes(n.id))) toast('All non-negotiables done. You did what you said you would do. 💪');
+  const active = S.nonneg.filter(x => nnApplies(x, t));
+  if (active.length && active.every(x => doneOn(x, t))) toast('All non-negotiables done. You did what you said you would do. 💪');
 }
 function goalCard() {
   const st = S.settings, left = diff(today(), st.goalDeadline);
@@ -647,7 +656,7 @@ function nnCard() {
   const active = S.nonneg.filter(n => nnApplies(n, t)), off = S.nonneg.filter(n => !nnApplies(n, t));
   const done = active.filter(n => isDone(n.id)).length, total = active.length, sk = nnStreak();
   const row = (n, rest) => `<div class="row ${rest ? 'offrow' : ''}">${rest ? '<span class="tick off"></span>' : `<button class="tick ${isDone(n.id) ? 'done' : ''}" data-act="nnToggle" data-id="${n.id}" aria-label="Done">${TICK}</button>`}
-    <div class="grow ${isDone(n.id) && !rest ? 'done-t' : ''}"><b style="font-weight:600">${esc(n.title)}</b></div>
+    <div class="grow ${isDone(n.id) && !rest ? 'done-t' : ''}"><b style="font-weight:600">${esc(n.title)}</b>${n.auto ? ` <span class="chip">${n.auto === 'dms' ? 'from DM count' : 'from Content'}</span>` : ''}</div>
     <button class="sunbtn ${n.sun ? 'on' : ''}" data-act="nnSun" data-id="${n.id}" title="Tap to ${n.sun ? 'stop doing' : 'also do'} this on Sundays">Sun</button><button class="x" data-act="nnDel" data-id="${n.id}" aria-label="Remove">×</button></div>`;
   const small = sun ? (total ? `${done} / ${total} done · Sunday: only items marked Sun` : 'Sunday is your day off · streak is safe') : `${done} / ${total} done today · ${sk ? sk + '-day streak' : 'complete all of them to start a streak'}`;
   return `<div class="card" style="margin-bottom:16px"><h2>My daily non-negotiables <small>${small}</small></h2>
@@ -680,7 +689,7 @@ function vToday() {
     ['DMs sent', log.dms || 0, st.dmTarget, 'dms'],
     ['Conversations started', autoCount(t, 'convo'), st.convoTarget, null],
     ['Calls booked', autoCount(t, 'booked'), st.callTarget, null],
-    ['Content posted', log.content || 0, st.contentTarget, 'content'],
+    ['Post published', (S.contentLog[t] || {}).piece ? 1 : 0, 1, null],
   ];
   const days = [...Array(7)].map((_, i) => addDays(t, i - 6));
   const sk = streak();
