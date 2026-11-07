@@ -262,7 +262,8 @@ const today = () => iso(new Date());
 const parse = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
 const addDays = (s, n) => { const d = parse(s); d.setDate(d.getDate() + n); return iso(d); };
 const diff = (a, b) => Math.round((parse(b) - parse(a)) / 864e5);
-const gbp = n => (n < 0 ? '-' : '') + '£' + Math.round(Math.abs(n)).toLocaleString('en-GB');
+let CUR = '$'; // currency symbol, set in Settings
+const gbp = n => (n < 0 ? '-' : '') + CUR + Math.round(Math.abs(n)).toLocaleString('en-GB');
 const sum = (arr, k) => arr.reduce((a, x) => a + (+(typeof k === 'function' ? k(x) : x[k]) || 0), 0);
 const fdate = s => s ? parse(s).toLocaleDateString('en-GB', {weekday:'short', day:'numeric', month:'short'}) : '';
 const mname = ym => parse(ym + '-01').toLocaleDateString('en-GB', {month:'short'});
@@ -282,6 +283,13 @@ const dow = d => parse(d).getDay() || 7;            // Monday = 1 ... Sunday = 7
 const weekStart = d => addDays(d, 1 - dow(d));       // the Monday of that week
 
 /* ================= model ================= */
+const offerOf = id => S.settings.offers.find(o => o.id === id);
+const offerName = id => (offerOf(id) || {}).name || '';
+const offerPrice = id => (offerOf(id) || {}).price || 0;
+function needText(rem) {   // "3 BRIDGE Mentorship or 8 Soul Ark Community"
+  const [c, b] = S.settings.offers;
+  return `${Math.ceil(rem / Math.max(1, b.price))} ${b.name} or ${Math.ceil(rem / Math.max(1, c.price))} ${c.name}`;
+}
 const STAGES = [
   {id:'dm',     label:'New / DM Sent',       p:.05},
   {id:'convo',  label:'In Conversation',     p:.15},
@@ -308,7 +316,8 @@ const TEMPLATES = [
 ];
 
 const DEFAULT_SETTINGS = {
-  bizName:'Soul Ark Scale', ownerName:'Zak', target:5000, offerPrice:997, staleDays:3, gap:3,
+  bizName:'Soul Ark Scale', ownerName:'Zak', target:5000, offerPrice:995, currency:'$', staleDays:3, gap:3,
+  offers:[{id:'community', name:'Soul Ark Community', price:395}, {id:'bridge', name:'BRIDGE Mentorship', price:995}],
   dmTarget:20, convoTarget:5, callTarget:1, contentTarget:1,
   nextOffer:'Scale Mentorship for Coaches', sample:false,
   goalTitle:'Hit 50 purchases of Soul Ark Scale', goalTarget:50, goalUnit:'purchases', goalCount:0,
@@ -346,7 +355,7 @@ const DRAFT_KEY = 'coachos.drafts'; // remembers half-typed text
 let S = loadState();
 
 function blank() {
-  return {settings:{...DEFAULT_SETTINGS, goalDeadline:addDays(today(), 90)}, leads:[], clients:[], tasks:[], payments:[], daily:{}, proof:{},
+  return {settings:{...DEFAULT_SETTINGS, offers:DEFAULT_SETTINGS.offers.map(o => ({...o})), goalDeadline:addDays(today(), 90)}, leads:[], clients:[], tasks:[], payments:[], daily:{}, proof:{},
     expenses:[], bills:[], identity:DEFAULT_IDENTITY, mission:DEFAULT_MISSION, nonneg:defaultNonneg(), nonnegVersion:2, nonnegDone:{}, schedule:defaultSchedule(), contentLog:{}, weekly:{}};
 }
 function loadState() {
@@ -371,6 +380,7 @@ function migrate(o) {
   const s = {...b, ...o, settings:{...b.settings, ...(o.settings||{})}};
   if (s.settings.bizName === 'Soul Ark') s.settings.bizName = 'Soul Ark Scale'; // rebrand of earlier saved data
   s.tasks.forEach(t => { t.cat = CAT_RENAME[t.cat] || t.cat; });
+  if (!(o.settings && o.settings.offers)) { s.settings.offers = DEFAULT_SETTINGS.offers.map(x => ({...x})); s.settings.offerPrice = 995; s.settings.currency = '$'; } // two offers, prices in $
   if ((o.nonnegVersion || 0) < 2) { s.nonneg = defaultNonneg(); s.nonnegVersion = 2; } // one-time: the agreed 9 non-negotiables
   if (s.settings.goalTitle === 'Hit £5K/month with the 6-week mentorship') s.settings.goalTitle = DEFAULT_SETTINGS.goalTitle; // goal is purchases, not £
   s.leads.forEach(l => { l.history = l.history || [{stage:l.stage, date:l.created || today()}]; l.created = l.created || l.history[0].date; });
@@ -406,27 +416,29 @@ function sampleData(keep) {
     if (stage === 'won') l.wonDate = addDays(t, -lastAgo);
     s.leads.push(l); return l;
   };
-  L('Ryan M.','@ryan.m.fit','Instagram DM','decide',997,4,-1,'Needs to speak to his wife. Very keen.',12);
-  L('Tom A.','@tomafield','Webinar','decide',997,2,1,'Great call — asked about payment plan',9);
-  L('Josh P.','@joshp_','Instagram DM','booked',997,1,2,'Call booked Tue 4pm',6);
-  L('Mike D.','@mikedaniels','YouTube','booked',997,0,3,'',5);
-  L('Andy K.','@andyk','Instagram DM','convo',997,5,-2,'Struggling with purpose. Went quiet after last msg.',10);
-  L('Sam L.','@samlowe','Instagram DM','convo',997,1,1,'',3);
-  L('Dave R.','@dave_r','YouTube','convo',997,6,null,'Watched 3 videos, asked about price',14);
-  L('Kyle B.','@kyleb','Circle community','convo',997,2,0,'Free member, active in Reality Check',8);
-  L('Luis G.','@luisg','Instagram DM','dm',997,3,null,'Replied to story',3);
-  L('Chris N.','@chrisn','Referral','dm',997,0,2,'Referred by Marcus',1);
-  L('Ed T.','@edt','Webinar','dm',997,7,-3,'Attended webinar live',10);
+  L('Ryan M.','@ryan.m.fit','Instagram DM','decide',995,4,-1,'Needs to speak to his wife. Very keen.',12);
+  L('Tom A.','@tomafield','Webinar','decide',995,2,1,'Great call — asked about payment plan',9);
+  L('Josh P.','@joshp_','Instagram DM','booked',995,1,2,'Call booked Tue 4pm',6);
+  L('Mike D.','@mikedaniels','YouTube','booked',995,0,3,'',5);
+  L('Andy K.','@andyk','Instagram DM','convo',995,5,-2,'Struggling with purpose. Went quiet after last msg.',10);
+  L('Sam L.','@samlowe','Instagram DM','convo',995,1,1,'',3);
+  L('Dave R.','@dave_r','YouTube','convo',995,6,null,'Watched 3 videos, asked about price',14);
+  L('Kyle B.','@kyleb','Circle community','convo',995,2,0,'Free member, active in Reality Check',8);
+  L('Luis G.','@luisg','Instagram DM','dm',995,3,null,'Replied to story',3);
+  L('Chris N.','@chrisn','Referral','dm',995,0,2,'Referred by Marcus',1);
+  L('Ed T.','@edt','Webinar','dm',995,7,-3,'Attended webinar live',10);
   const won = [
     ['Marcus T.','@marcus.t','Instagram DM',21,30],['Daniel R.','@danr','Webinar',8,16],['Chris W.','@chriswill','YouTube',36,50],
     ['Jonny B.','@jonnyb','Instagram DM',2,9],['Ben H.','@benh','Instagram DM',75,90],['Luke S.','@lukes','Referral',58,70],
-  ].map(([n,h,src,wonAgo,cr]) => L(n,h,src,'won',997,wonAgo,null,'',cr));
-  L('Pete C.','@petec','Instagram DM','lost',997,25,null,'Said price was too high',30,{lostReason:'Price', lostFrom:'decide'});
-  L('Gary W.','@garyw','Webinar','lost',997,18,null,'',22,{lostReason:'Timing', lostFrom:'booked'});
-  L('Rob S.','@robs','YouTube','lost',997,12,null,'',20,{lostReason:'Ghosted', lostFrom:'convo'});
+  ].map(([n,h,src,wonAgo,cr]) => L(n,h,src,'won',995,wonAgo,null,'',cr));
+  L('Pete C.','@petec','Instagram DM','lost',995,25,null,'Said price was too high',30,{lostReason:'Price', lostFrom:'decide'});
+  L('Gary W.','@garyw','Webinar','lost',995,18,null,'',22,{lostReason:'Timing', lostFrom:'booked'});
+  L('Rob S.','@robs','YouTube','lost',995,12,null,'',20,{lostReason:'Ghosted', lostFrom:'convo'});
 
+  const sp = id => s.settings.offers.find(o => o.id === id).price;
+  s.leads.forEach((l, i) => { l.offer = (l.stage === 'won' || i % 3 !== 1) ? 'bridge' : 'community'; l.value = sp(l.offer); });
   const cl = (lead, wonAgo, status, extra = {}) => {
-    const c = {id:uid(), name:lead.name, start:addDays(t, -wonAgo), price:997, status, health:'ok', nextSession:'', notes:'', testimonial:false, upsell:false, leadId:lead.id, ...extra};
+    const c = {id:uid(), name:lead.name, start:addDays(t, -wonAgo), price:995, status, health:'ok', nextSession:'', notes:'', testimonial:false, upsell:false, leadId:lead.id, ...extra};
     s.clients.push(c); return c;
   };
   const [marcus, daniel, chrisW, jonny, ben, luke] = won;
@@ -437,16 +449,16 @@ function sampleData(keep) {
   const cB = cl(ben,75,'completed',{testimonial:true,upsell:true});
   const cLk = cl(luke,58,'completed',{testimonial:true,upsell:true});
   const mdate = (mAgo, day) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - mAgo); d.setDate(day); return iso(d); };
-  const pay = (date, who, amount, note, c) => s.payments.push({id:uid(), date, who, amount, note, clientId:c?.id || ''});
+  const pay = (date, who, amount, note, c) => s.payments.push({id:uid(), date, who, amount, note, clientId:c?.id || '', offer:c ? 'bridge' : ''});
   pay(mdate(3,12),'Pilot client',500,'Pilot mentorship');
-  pay(addDays(t,-75),'Ben H.',997,'6-week mentorship',cB);
+  pay(addDays(t,-75),'Ben H.',995,'6-week mentorship',cB);
   pay(mdate(2,5),'Pilot client',750,'Pilot mentorship');
-  pay(addDays(t,-58),'Luke S.',997,'6-week mentorship',cLk);
-  pay(addDays(t,-36),'Chris W.',997,'6-week mentorship',cC);
-  pay(addDays(t,-21),'Marcus T.',997,'6-week mentorship',cM);
+  pay(addDays(t,-58),'Luke S.',995,'6-week mentorship',cLk);
+  pay(addDays(t,-36),'Chris W.',995,'6-week mentorship',cC);
+  pay(addDays(t,-21),'Marcus T.',995,'6-week mentorship',cM);
   pay(addDays(t,-8),'Daniel R.',500,'Instalment 1',cD);
   pay(addDays(t,-3),'Daniel R.',250,'Instalment 2',cD);
-  pay(addDays(t,-2),'Jonny B.',997,'6-week mentorship',cJ);
+  pay(addDays(t,-2),'Jonny B.',995,'6-week mentorship',cJ);
 
   const T = (title, cat, due, pri, repeat = '', done = false) => s.tasks.push({id:uid(), title, cat, due:due === null ? '' : addDays(t, due), pri, repeat, done, doneAt:done ? t : ''});
   T('Reply to every open Instagram DM','Client',0,'high','daily');
@@ -570,6 +582,7 @@ function renderSide() {
 }
 
 function render() {
+  CUR = S.settings.currency || '$';
   renderSide();
   const fn = {today:vToday, content:vContent, pipeline:vPipeline, followups:vFollow, clients:vClients, tasks:vTasks, revenue:vRevenue, proof:vProof, settings:vSettings}[view];
   const banner = S.settings.sample ? `<div class="banner"><span><b>You're looking at sample data</b> — so you can see how everything works.</span><button class="btn sm" data-act="clearSample">Clear it &amp; start fresh</button></div>` : '';
@@ -678,7 +691,7 @@ function vToday() {
   const open = openLeads(), pipe = sum(open, 'value'), wtd = open.reduce((a, l) => a + l.value * prob(l.stage), 0);
   const act = activeClients(), ending = act.filter(c => clientWeek(c) >= 6).length;
   const now = new Date(), dom = now.getDate(), dim = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const proj = rev / dom * dim, need = Math.ceil(Math.max(0, st.target - rev) / st.offerPrice);
+  const proj = rev / dom * dim, need = Math.max(0, st.target - rev);
   const chase = [...new Set([...stuck, ...dueLeads()])].sort((a, b) => b.value - a.value).slice(0, 6);
   const chaseTotal = new Set([...stuck, ...dueLeads()]).size;
   const tasks = S.tasks.filter(x => !x.done && x.due && x.due <= t).sort((a, b) => a.due.localeCompare(b.due));
@@ -697,7 +710,7 @@ function vToday() {
     .sort((a, b) => (b.health === 'risk') - (a.health === 'risk'));
   return `
   <div class="top"><div><h1>${greet}, ${esc(st.ownerName)}</h1><p>${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}${isSunday() ? ' · Day of rest 🙏' : ''}</p></div>
-    <div class="acts"><button class="btn" data-act="newLead">+ Lead</button><button class="btn ghost" data-act="newPayment">+ Payment</button><button class="btn ghost" data-act="newExpense">+ Spend</button><button class="btn ghost" data-act="newClient">+ Client</button></div></div>
+    <div class="acts"><button class="btn" data-act="newLead">+ Lead</button><button class="btn ghost" data-act="newPayment">+ Sale</button><button class="btn ghost" data-act="newExpense">+ Spend</button><button class="btn ghost" data-act="newClient">+ Client</button></div></div>
   <div class="grid" style="margin-bottom:16px">${identityCard()}${goalCard()}</div>
   <div style="margin-bottom:16px">${missionCard()}</div>
   ${nnCard()}
@@ -707,7 +720,7 @@ function vToday() {
     <button class="kpi ${stuckVal ? 'alert' : ''}" data-act="go" data-v="followups"><div class="l">Money stuck in chats</div><div class="v">${gbp(stuckVal)}</div><div class="s">${stuck.length} ${stuck.length === 1 ? 'person' : 'people'} waiting on you</div></button>
     <button class="kpi" data-act="go" data-v="pipeline"><div class="l">Open pipeline</div><div class="v">${gbp(pipe)}</div><div class="s">${gbp(wtd)} likely · ${open.length} leads</div></button>
     <button class="kpi" data-act="go" data-v="clients"><div class="l">Active clients</div><div class="v">${act.length}</div><div class="s">${ending ? ending + ' finishing now' : 'in the 6-week programme'}</div></button>
-    <div class="kpi"><div class="l">Month forecast</div><div class="v">${gbp(proj)}</div><div class="s">${need ? `Need ${need} more client${need > 1 ? 's' : ''} to hit your target` : 'Monthly target hit 🎯'}</div></div>
+    <div class="kpi"><div class="l">Month forecast</div><div class="v">${gbp(proj)}</div><div class="s">${need ? 'Need ' + needText(need) + ' to hit your target' : 'Monthly target hit 🎯'}</div></div>
   </div>
   <div class="grid">
     <div class="stack">
@@ -789,7 +802,7 @@ function card(l) {
   const isOpen = OPEN.includes(l.stage), sl = silent(l);
   return `<div class="lcard ${isStuck(l) ? 'stuck' : ''}" draggable="true" data-lead="${l.id}" data-act="editLead" data-id="${l.id}">
     <div class="t"><b>${esc(l.name)}</b><span class="val">${gbp(l.value)}</span></div>
-    <div class="sub">${esc(l.handle || '')}${l.handle ? ' · ' : ''}${esc(l.source)}</div>
+    <div class="sub">${esc(l.handle || '')}${l.handle ? ' · ' : ''}${esc(l.source)}${l.offer ? ' · ' + esc(offerName(l.offer)) : ''}</div>
     <div class="m">${isOpen ? `<span class="chip ${sl >= S.settings.staleDays ? 'bad' : ''}">${sl === 0 ? 'contacted today' : sl + 'd silent'}</span>` : ''}
       ${l.nextFollowUp && isOpen ? `<span class="chip ${l.nextFollowUp < today() ? 'bad' : l.nextFollowUp === today() ? 'warn' : ''}">follow-up ${rel(l.nextFollowUp)}</span>` : ''}
       ${l.stage === 'lost' && l.lostReason ? `<span class="chip bad">${esc(l.lostReason)}</span>` : ''}</div>
@@ -935,14 +948,14 @@ function vRevenue() {
       <div class="chart"><div class="tl" style="bottom:${st.target / mx * (210 - 26)}px"><span>Target</span></div>
       ${months.map((m, i) => `<div class="col ${i === 5 ? 'cur' : ''}" title="${mname(m.k)}: ${gbp(m.v)}"><b>${gbp(m.v)}</b><i style="height:${m.v / mx * (210 - 54)}px"></i></div>`).join('')}</div>
       <div class="xl">${months.map(m => `<span>${mname(m.k)}</span>`).join('')}</div></div>
-    <div class="card"><h2>Latest payments in</h2>${pays.length ? `<table>${pays.map(p => `<tr><td><b>${esc(p.who)}</b><div class="sub">${fdate(p.date)}${p.note ? ' · ' + esc(p.note) : ''}</div></td><td class="r val">${gbp(p.amount)}</td><td class="r"><button class="x" data-act="delPay" data-id="${p.id}" aria-label="Delete payment">×</button></td></tr>`).join('')}</table>` : '<div class="empty">No payments logged yet.</div>'}</div>
+    <div class="card"><h2>Latest payments in</h2>${pays.length ? `<table>${pays.map(p => `<tr><td><b>${esc(p.who)}</b><div class="sub">${fdate(p.date)}${p.note ? ' · ' + esc(p.note) : ''}${p.offer && p.offer !== '' && !(p.note || '').includes(offerName(p.offer)) ? ' · ' + esc(offerName(p.offer)) : ''}</div></td><td class="r val">${gbp(p.amount)}</td><td class="r"><button class="x" data-act="delPay" data-id="${p.id}" aria-label="Delete payment">×</button></td></tr>`).join('')}</table>` : '<div class="empty">No payments logged yet.</div>'}</div>
   </div>
 
   <div class="sec" style="margin-top:26px">Money out</div>
   <div class="grid" style="margin-top:8px">
     <div class="card"><h2>Spending log <small>everything that leaves your account</small></h2>
       <form data-form="expense" class="inline" style="margin-bottom:12px">
-        <input name="amount" type="number" min="0.01" step="0.01" placeholder="£ amount" required style="flex:1;min-width:90px">
+        <input name="amount" type="number" min="0.01" step="0.01" placeholder="${CUR} amount" required style="flex:1;min-width:90px">
         <select name="cat">${EXP_CATS.map(c => `<option>${c}</option>`).join('')}</select>
         <input name="note" placeholder="What was it?" style="flex:2;min-width:130px">
         <input name="date" type="date" value="${t}">
@@ -1039,7 +1052,10 @@ function vSettings() {
   return `<div class="top"><div><h1>Settings</h1><p>Make it yours. Everything is saved automatically in this browser.</p></div></div>
   <div class="grid"><div class="card"><form data-form="settings">
     <div class="two">${fld('Business name', 'bizName', s.bizName)}${fld('Your first name', 'ownerName', s.ownerName)}</div>
-    <div class="two">${fld('Monthly revenue target (£)', 'target', s.target, 'number', 'min="0"')}${fld('Main offer price (£)', 'offerPrice', s.offerPrice, 'number', 'min="0"')}</div>
+    <div class="two">${fld('Monthly revenue target (' + CUR + ')', 'target', s.target, 'number', 'min="0"')}${sel('Currency', 'currency', [['$', '$ US dollar'], ['£', '£ British pound'], ['€', '€ Euro']], s.currency)}</div>
+    <div class="sec">Your offers</div>
+    <div class="two">${fld('Offer 1', 'o1name', s.offers[0].name)}${fld('Price (' + CUR + ')', 'o1price', s.offers[0].price, 'number', 'min="0"')}</div>
+    <div class="two">${fld('Offer 2', 'o2name', s.offers[1].name)}${fld('Price (' + CUR + ')', 'o2price', s.offers[1].price, 'number', 'min="0"')}</div>
     <div class="two">${fld('Chase a lead after (days silent)', 'staleDays', s.staleDays, 'number', 'min="1"')}${fld('Default next follow-up (days)', 'gap', s.gap, 'number', 'min="1"')}</div>
     <div class="sec">Daily targets</div>
     <div class="two">${fld('DMs sent', 'dmTarget', s.dmTarget, 'number', 'min="1"')}${fld('Conversations started', 'convoTarget', s.convoTarget, 'number', 'min="1"')}</div>
@@ -1061,20 +1077,20 @@ function snapsHtml() {
 
 /* ================= modals ================= */
 function leadForm(id) {
-  const l = id ? S.leads.find(x => x.id === id) : {name:'', handle:'', source:SOURCES[0], stage:'dm', value:S.settings.offerPrice, lastContact:today(), nextFollowUp:noSun(addDays(today(), S.settings.gap)), notes:''};
+  const l = id ? S.leads.find(x => x.id === id) : {name:'', handle:'', source:SOURCES[0], stage:'dm', offer:'bridge', value:offerPrice('bridge'), lastContact:today(), nextFollowUp:noSun(addDays(today(), S.settings.gap)), notes:''};
   modal(id ? 'Edit lead' : 'New lead', `<form data-form="lead" data-id="${id || ''}">
     <div class="two">${fld('Name', 'name', l.name, 'text', 'required')}${fld('Instagram / handle', 'handle', l.handle)}</div>
     <div class="two">${sel('Source', 'source', SOURCES, l.source)}${sel('Stage', 'stage', STAGES.map(s => [s.id, s.label]), l.stage)}</div>
-    <div class="two">${fld('Deal value (£)', 'value', l.value, 'number', 'min="0"')}${fld('Last contacted', 'lastContact', l.lastContact, 'date')}</div>
-    ${fld('Next follow-up', 'nextFollowUp', l.nextFollowUp, 'date')}
+    <div class="two">${sel('Offer', 'offer', [['', 'Not decided'], ...S.settings.offers.map(o => [o.id, o.name])], l.offer || '')}${fld('Deal value (' + CUR + ')', 'value', l.value, 'number', 'min="0"')}</div>
+    <div class="two">${fld('Last contacted', 'lastContact', l.lastContact, 'date')}${fld('Next follow-up', 'nextFollowUp', l.nextFollowUp, 'date')}</div>
     <label class="fld"><span>Notes</span><textarea name="notes">${esc(l.notes)}</textarea></label>
     <div class="mfoot">${id ? '<button type="button" class="btn danger l" data-act="delLead" data-id="' + id + '">Delete</button>' : ''}<button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save</button></div></form>`);
 }
 function clientForm(id) {
-  const c = id ? S.clients.find(x => x.id === id) : {name:'', start:today(), price:S.settings.offerPrice, status:'active', health:'ok', nextSession:'', notes:'', testimonial:false, upsell:false};
+  const c = id ? S.clients.find(x => x.id === id) : {name:'', start:today(), price:offerPrice('bridge'), status:'active', health:'ok', nextSession:'', notes:'', testimonial:false, upsell:false};
   modal(id ? 'Edit client' : 'New client', `<form data-form="client" data-id="${id || ''}">
     ${fld('Name', 'name', c.name, 'text', 'required')}
-    <div class="two">${fld('Start date', 'start', c.start, 'date', 'required')}${fld('Price (£)', 'price', c.price, 'number', 'min="0"')}</div>
+    <div class="two">${fld('Start date', 'start', c.start, 'date', 'required')}${fld('Price (' + CUR + ')', 'price', c.price, 'number', 'min="0"')}</div>
     <div class="two">${sel('Status', 'status', [['active','Active'],['completed','Completed'],['paused','Paused']], c.status)}${sel('How are they doing?', 'health', [['ok','On track'],['risk','At risk']], c.health)}</div>
     ${fld('Next session', 'nextSession', c.nextSession, 'date')}
     <label class="fld"><span>Notes</span><textarea name="notes">${esc(c.notes)}</textarea></label>
@@ -1083,18 +1099,22 @@ function clientForm(id) {
     <div class="mfoot">${id ? '<button type="button" class="btn danger l" data-act="delClient" data-id="' + id + '">Delete</button>' : ''}<button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save</button></div></form>`);
 }
 function payForm() {
-  modal('Log payment', `<form data-form="payment">
-    <div class="two">${fld('Date', 'date', today(), 'date', 'required')}${fld('Amount (£)', 'amount', S.settings.offerPrice, 'number', 'min="1" required')}</div>
+  const offers = S.settings.offers;
+  modal('Log a sale', `<form data-form="payment">
+    ${sel('What was bought?', 'offer', [['', 'Other / not one of my offers'], ...offers.map(o => [o.id, o.name + ' · ' + gbp(o.price)])], offers[0].id)}
+    <div class="two">${fld('Date', 'date', today(), 'date', 'required')}${fld('Amount (' + CUR + ')', 'amount', offers[0].price, 'number', 'min="1" required')}</div>
     <label class="fld"><span>From</span><select name="clientId"><option value="">Someone else…</option>${S.clients.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label>
-    ${fld('Name (if not a client)', 'who')}${fld('What for', 'note', '6-week mentorship')}
+    ${fld('Name (if not a client)', 'who')}${fld('Note (optional)', 'note')}
+    <label class="chk"><input type="checkbox" name="counts" checked> Counts as 1 purchase toward my goal</label>
     <div class="mfoot"><button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save</button></div></form>`);
 }
 function winForm(id) {
-  const l = S.leads.find(x => x.id === id);
+  const l = S.leads.find(x => x.id === id), isClient = l.offer !== 'community';
   modal('🎉 Won — ' + esc(l.name), `<form data-form="win" data-id="${id}">
-    <div class="two">${fld('Programme price (£)', 'price', l.value, 'number', 'min="0"')}${fld('Paid today (£)', 'paid', l.value, 'number', 'min="0"')}</div>
-    ${fld('Programme start date', 'start', today(), 'date')}
-    <p class="sub" style="margin-bottom:12px">This adds them to Clients and logs the payment.</p>
+    <div class="two">${fld('Price (' + CUR + ')', 'price', l.value, 'number', 'min="0"')}${fld('Paid today (' + CUR + ')', 'paid', l.value, 'number', 'min="0"')}</div>
+    ${fld('Start date', 'start', today(), 'date')}
+    <label class="chk"><input type="checkbox" name="addClient" ${isClient ? 'checked' : ''}> Add as a mentorship client (tracks their weeks)</label>
+    <p class="sub" style="margin-bottom:12px">Logs the payment and counts 1 purchase toward your goal.</p>
     <div class="mfoot"><button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn good">Sign them up</button></div></form>`);
 }
 function lostForm(id) {
@@ -1106,7 +1126,7 @@ function lostForm(id) {
 
 function expenseForm() {
   modal('Log money out', `<form data-form="expense">
-    <div class="two">${fld('Date', 'date', today(), 'date', 'required')}${fld('Amount (£)', 'amount', '', 'number', 'min="0.01" step="0.01" required')}</div>
+    <div class="two">${fld('Date', 'date', today(), 'date', 'required')}${fld('Amount (' + CUR + ')', 'amount', '', 'number', 'min="0.01" step="0.01" required')}</div>
     ${sel('Category', 'cat', EXP_CATS, 'Food')}${fld('What was it?', 'note')}
     <div class="mfoot"><button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save</button></div></form>`);
 }
@@ -1114,7 +1134,7 @@ function billForm(id) {
   const b = id ? S.bills.find(x => x.id === id) : {name:'', amount:'', day:1, cat:'Bills'};
   modal(id ? 'Edit bill' : 'New monthly bill', `<form data-form="bill" data-id="${id || ''}">
     ${fld('Bill name', 'name', b.name, 'text', 'required placeholder="e.g. Rent, Circle, Phone"')}
-    <div class="two">${fld('Amount (£)', 'amount', b.amount, 'number', 'min="0.01" step="0.01" required')}${fld('Due day of month', 'day', b.day, 'number', 'min="1" max="31" required')}</div>
+    <div class="two">${fld('Amount (' + CUR + ')', 'amount', b.amount, 'number', 'min="0.01" step="0.01" required')}${fld('Due day of month', 'day', b.day, 'number', 'min="1" max="31" required')}</div>
     ${sel('Category', 'cat', EXP_CATS, b.cat)}
     <div class="mfoot">${id ? '<button type="button" class="btn danger l" data-act="delBill" data-id="' + id + '">Delete</button>' : ''}<button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save</button></div></form>`);
 }
@@ -1217,7 +1237,7 @@ document.addEventListener('click', e => {
     }
     case 'toggleTask': toggleTask(id); break;
     case 'delTask': S.tasks = S.tasks.filter(x => x.id !== id); save(); render(); break;
-    case 'delPay': if (confirm('Delete this payment?')) { S.payments = S.payments.filter(x => x.id !== id); save(); render(); } break;
+    case 'delPay': if (confirm('Delete this payment?')) { const p = S.payments.find(x => x.id === id); if (p && p.counted) S.settings.goalCount = Math.max(0, (S.settings.goalCount || 0) - 1); S.payments = S.payments.filter(x => x.id !== id); save(); render(); } break;
     case 'taskFilter': taskFilter = el.dataset.c; render(); break;
     case 'bump': bump(el.dataset.k, +el.dataset.n); break;
     case 'range': proofRange = +el.dataset.v; render(); break;
@@ -1243,11 +1263,11 @@ document.addEventListener('submit', e => {
   if (kind === 'lead') {
     if (id) {
       const l = S.leads.find(x => x.id === id), newStage = f.stage;
-      Object.assign(l, {name:f.name.trim(), handle:f.handle.trim(), source:f.source, value:+f.value || 0, lastContact:f.lastContact, nextFollowUp:f.nextFollowUp, notes:f.notes});
+      Object.assign(l, {name:f.name.trim(), handle:f.handle.trim(), source:f.source, offer:f.offer || '', value:+f.value || 0, lastContact:f.lastContact, nextFollowUp:f.nextFollowUp, notes:f.notes});
       save(); closeModal();
       if (newStage !== l.stage) moveLead(id, newStage); else render();
     } else {
-      S.leads.push({id:uid(), name:f.name.trim(), handle:f.handle.trim(), source:f.source, stage:f.stage, value:+f.value || 0, lastContact:f.lastContact || t, nextFollowUp:f.nextFollowUp, notes:f.notes, created:t, history:[{stage:f.stage, date:t}]});
+      S.leads.push({id:uid(), name:f.name.trim(), handle:f.handle.trim(), source:f.source, stage:f.stage, offer:f.offer || '', value:+f.value || 0, lastContact:f.lastContact || t, nextFollowUp:f.nextFollowUp, notes:f.notes, created:t, history:[{stage:f.stage, date:t}]});
       save(); closeModal(); render(); toast('Lead added');
     }
   } else if (kind === 'client') {
@@ -1255,16 +1275,18 @@ document.addEventListener('submit', e => {
     if (id) Object.assign(S.clients.find(x => x.id === id), data); else S.clients.push({id:uid(), ...data});
     save(); closeModal(); render();
   } else if (kind === 'payment') {
-    const c = S.clients.find(x => x.id === f.clientId);
-    S.payments.push({id:uid(), date:f.date, who:c ? c.name : (f.who.trim() || 'Payment'), amount:+f.amount || 0, note:f.note, clientId:c ? c.id : ''});
-    save(); closeModal(); render(); toast('Payment logged 💷');
+    const c = S.clients.find(x => x.id === f.clientId), counted = !!f.counts;
+    S.payments.push({id:uid(), date:f.date, who:c ? c.name : (f.who.trim() || 'Payment'), amount:+f.amount || 0, note:(f.note || '').trim() || offerName(f.offer), offer:f.offer || '', counted, clientId:c ? c.id : ''});
+    if (counted) S.settings.goalCount = (S.settings.goalCount || 0) + 1;
+    save(); closeModal(); render(); toast(counted ? `Sale logged 💷 Goal: ${S.settings.goalCount} / ${S.settings.goalTarget}` : 'Payment logged');
   } else if (kind === 'win') {
     const l = S.leads.find(x => x.id === id), price = +f.price || 0, paid = +f.paid || 0;
     applyStage(l, 'won'); l.wonDate = t; l.value = price; l.nextFollowUp = '';
-    const c = {id:uid(), name:l.name, start:f.start || t, price, status:'active', health:'ok', nextSession:'', notes:'', testimonial:false, upsell:false, leadId:l.id};
-    S.clients.push(c);
-    if (paid > 0) S.payments.push({id:uid(), date:t, who:l.name, amount:paid, note:'6-week mentorship', clientId:c.id});
-    save(); closeModal(); render(); toast(`Signed ${l.name}! 🎉`);
+    let c = null;
+    if (f.addClient) { c = {id:uid(), name:l.name, start:f.start || t, price, status:'active', health:'ok', nextSession:'', notes:'', testimonial:false, upsell:false, leadId:l.id}; S.clients.push(c); }
+    if (paid > 0) S.payments.push({id:uid(), date:t, who:l.name, amount:paid, note:offerName(l.offer) || 'Purchase', offer:l.offer || '', counted:true, clientId:c ? c.id : ''});
+    S.settings.goalCount = (S.settings.goalCount || 0) + 1;
+    save(); closeModal(); render(); toast(`Signed ${l.name}! 🎉 Goal: ${S.settings.goalCount} / ${S.settings.goalTarget}`);
   } else if (kind === 'lost') {
     const l = S.leads.find(x => x.id === id);
     applyStage(l, 'lost'); l.lostReason = f.reason; l.nextFollowUp = '';
@@ -1292,7 +1314,7 @@ document.addEventListener('submit', e => {
     S.nonneg.push({id:uid(), title:f.title.trim()}); save(); render();
   } else if (kind === 'settings') {
     const n = k => Math.max(1, +f[k] || DEFAULT_SETTINGS[k]);
-    Object.assign(S.settings, {bizName:f.bizName.trim() || 'My Coaching', ownerName:f.ownerName.trim(), target:n('target'), offerPrice:n('offerPrice'), staleDays:n('staleDays'), gap:n('gap'), dmTarget:n('dmTarget'), convoTarget:n('convoTarget'), callTarget:n('callTarget'), contentTarget:n('contentTarget'), nextOffer:f.nextOffer});
+    Object.assign(S.settings, {bizName:f.bizName.trim() || 'My Coaching', ownerName:f.ownerName.trim(), target:n('target'), currency:f.currency || '$', offerPrice:Math.max(0, +f.o2price || 0), offers:[{id:'community', name:(f.o1name || '').trim() || 'Soul Ark Community', price:Math.max(0, +f.o1price || 0)}, {id:'bridge', name:(f.o2name || '').trim() || 'BRIDGE Mentorship', price:Math.max(0, +f.o2price || 0)}], staleDays:n('staleDays'), gap:n('gap'), dmTarget:n('dmTarget'), convoTarget:n('convoTarget'), callTarget:n('callTarget'), contentTarget:n('contentTarget'), nextOffer:f.nextOffer});
     document.title = S.settings.bizName + ' — Command Centre';
     save(); render(); toast('Settings saved');
   }
@@ -1344,6 +1366,17 @@ window.addEventListener('scroll', () => { clearTimeout(scrollT); scrollT = setTi
 window.addEventListener('pagehide', save);
 /* if the dashboard is open in two tabs, the other tab's changes show up here instead of being overwritten */
 window.addEventListener('storage', e => { if (e.key === KEY && e.newValue) { try { S = migrate(JSON.parse(e.newValue)); render(); } catch (x) {} } });
+
+document.addEventListener('change', e => {
+  const t = e.target; if (!t || t.name !== 'offer') return;
+  const f = t.closest('form'); if (!f) return;
+  const fire = el => el && el.dispatchEvent(new Event('input', {bubbles:true}));
+  if (f.dataset.form === 'lead' && t.value && f.elements.value) { f.elements.value.value = offerPrice(t.value); fire(f.elements.value); }
+  if (f.dataset.form === 'payment') {
+    if (t.value && f.elements.amount) { f.elements.amount.value = offerPrice(t.value); fire(f.elements.amount); }
+    if (f.elements.counts) { f.elements.counts.checked = !!t.value; fire(f.elements.counts); }
+  }
+});
 
 /* import backup */
 document.addEventListener('change', e => {
