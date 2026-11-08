@@ -352,6 +352,8 @@ const defaultSchedule = () => [
   {d:6, tag:'story', piece:'Your story and testimonial: what changed',  stories:'Your story'},
   {d:7, tag:'rest',  piece:'Rest',                                      stories:'Rest'},
 ];
+const EMOTIONS = ['Lost / no purpose','Stuck / unmotivated','Anxious / overwhelmed','Ashamed / guilty','Lonely','Angry / frustrated','Burnt out','Doubting God / faith','Money stress','Addiction / temptation','Relationship pain','Pressure as a man / provider','Hopeful / ready to change','Other'];
+const THEME_SRC = ['Live chat','Instagram DM','TikTok DM','WhatsApp','Webinar','Circle community','Client call','Comment','Other'];
 const WEEKLY = [['yt','YouTube videos',3,true], ['clip','Clipping session',1,true], ['sales','Sales days (post + stories)',2,false], ['client','Client story',1,false], ['story','Your own story',1,false]];
 const EXP_CATS = ['Bills','Business & software','Marketing','Food','Transport','Personal','Giving','Other'];
 const defaultNonneg = () => [
@@ -374,7 +376,7 @@ let S = loadState();
 
 function blank() {
   return {settings:{...DEFAULT_SETTINGS, offers:DEFAULT_SETTINGS.offers.map(o => ({...o})), goalDeadline:addDays(today(), 90)}, leads:[], clients:[], tasks:[], payments:[], daily:{}, proof:{},
-    expenses:[], bills:[], income:[], identity:DEFAULT_IDENTITY, mission:DEFAULT_MISSION, nonneg:defaultNonneg(), nonnegVersion:3, nonnegDone:{}, schedule:defaultSchedule(), contentLog:{}, weekly:{}};
+    expenses:[], bills:[], income:[], identity:DEFAULT_IDENTITY, mission:DEFAULT_MISSION, nonneg:defaultNonneg(), nonnegVersion:3, nonnegDone:{}, schedule:defaultSchedule(), contentLog:{}, weekly:{}, themes:[]};
 }
 function loadState() {
   let raw = null;
@@ -799,6 +801,36 @@ function tickBtns(d) {
   const l = S.contentLog[d] || {};
   return `<button class="ctick ${l.piece ? 'done' : ''}" data-act="contentTick" data-date="${d}" data-k="piece">${l.piece ? '✓ ' : ''}Posted</button><button class="ctick ${l.stories ? 'done' : ''}" data-act="contentTick" data-date="${d}" data-k="stories">${l.stories ? '✓ ' : ''}Stories</button>`;
 }
+/* ---- common themes of the week: what real people are feeling, straight from chats / DMs / lives ---- */
+const weekThemes = (base) => S.themes.filter(x => x.date >= base && x.date <= addDays(base, 6));
+const tally = list => { const m = {}; list.forEach(x => { m[x.emotion] = (m[x.emotion] || 0) + 1; }); return Object.entries(m).sort((a, b) => b[1] - a[1]); };
+function themesText(base) {
+  const ls = weekThemes(base).sort((a, b) => a.date.localeCompare(b.date)), top = tally(ls);
+  return `Soul Ark: what my audience is feeling, week of ${fdate(base)}\n` + (top.length ? `Top emotions: ${top.map(([e, n]) => `${e} (${n})`).join(', ')}\n` : '') + '\n' +
+    ls.map(x => `- [${x.emotion}] ${x.source}, ${fdate(x.date)}: ${x.pain}${x.idea ? `\n  Content idea: ${x.idea}` : ''}`).join('\n');
+}
+function themesCard(base, days) {
+  const ls = weekThemes(base).sort((a, b) => b.date.localeCompare(a.date) || (b.id > a.id ? 1 : -1)), top = tally(ls), t = today();
+  const inWeek = t >= base && t <= days[6], notMade = ls.filter(x => !x.made).length;
+  const m4 = tally(S.themes.filter(x => x.date >= addDays(base, -21) && x.date <= addDays(base, 6)));
+  return `<div class="card" style="margin-top:16px"><h2>Common themes of the week <small>what real people are feeling right now: from live chats, DMs, calls, comments</small></h2>
+    <div class="sub" style="margin-bottom:10px">Log what you hear. At the end of the week the biggest theme becomes your next reels and YouTube videos.</div>
+    <form data-form="theme" class="inline" style="flex-wrap:wrap;gap:8px">
+      <select name="emotion" aria-label="Emotion" style="flex:1;min-width:170px">${EMOTIONS.map(e => `<option>${e}</option>`).join('')}</select>
+      <select name="source" aria-label="Where from" style="flex:1;min-width:130px">${THEME_SRC.map(e => `<option>${e}</option>`).join('')}</select>
+      <input name="date" type="date" value="${inWeek ? t : base}" style="flex:none">
+      <input name="pain" placeholder="Their pain point / what they actually said…" required style="flex:3 1 100%;min-width:220px">
+      <input name="idea" placeholder="Content idea this gives me (optional)" style="flex:2;min-width:180px">
+      <button class="btn sm">Log it</button></form>
+    ${top.length ? `<div class="sec" style="margin-top:16px">This week's themes${notMade ? ` · ${notMade} not turned into content yet` : ' · all turned into content ✓'}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 4px">${top.map(([e, n], i) => `<span class="chip ${i === 0 ? 'warn' : ''}" style="font-size:13px;padding:4px 10px">${i === 0 ? '🔥 ' : ''}${esc(e)} · ${n}</span>`).join('')}</div>` : ''}
+    ${ls.length ? ls.map(x => `<div class="row"><div class="grow"><span class="chip" data-s="${x.made ? 'won' : ''}">${esc(x.emotion)}</span> <span class="sub">${esc(x.source)} · ${fdate(x.date)}</span>
+        <div style="margin-top:4px">${esc(x.pain)}</div>${x.idea ? `<div class="sub" style="color:var(--gold2)">Idea: ${esc(x.idea)}</div>` : ''}</div>
+        <button class="btn sm ${x.made ? 'good' : 'ghost'}" data-act="themeMade" data-id="${x.id}">${x.made ? '✓ Made' : 'Made content'}</button>
+        <button class="x" data-act="delTheme" data-id="${x.id}" aria-label="Delete">×</button></div>`).join('') : '<div class="empty">Nothing logged for this week yet. Next time someone tells you how they really feel, put it here.</div>'}
+    ${ls.length ? `<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm ghost" data-act="copyThemes">Copy this week's themes</button></div>` : ''}
+    ${m4.length > 1 && S.themes.length > ls.length ? `<div class="sub" style="margin-top:12px">Last 4 weeks, most common: ${m4.slice(0, 4).map(([e, n]) => `${esc(e)} (${n})`).join(' · ')}</div>` : ''}</div>`;
+}
 function vContent() {
   const t = today(), base = addDays(weekStart(t), contentWeek * 7), days = [...Array(7)].map((_, i) => addDays(base, i));
   const wk = S.weekly[base] || {}, cnt = {sales:0, client:0, story:0};
@@ -822,6 +854,7 @@ function vContent() {
           <div class="cpiece"><span class="sub">Post</span> ${esc(e.piece)}</div>
           <div class="cpiece"><span class="sub">Stories</span> ${esc(e.stories)}</div></div>
         <div class="cticks">${rest ? '<span class="sub">Day of rest 🙏</span>' : tickBtns(d)}<button class="btn sm ghost" data-act="editDay" data-id="${e.d}">Edit</button></div></div>`; }).join('')}</div>
+  ${themesCard(base, days)}
   <div class="grid" style="margin-top:16px">
     <div class="card"><h2>Every day</h2><div class="sub" style="color:var(--text);line-height:1.7">Routine stories: working out, praying, journalling, client calls, posting in the community.<br>Your captions should say what you do, who you help, what you offer, your opinions and your everyday life.</div></div>
     <div class="card"><h2>Batching</h2><div class="sub" style="color:var(--text);line-height:1.7">Film your 3 YouTube videos in one sitting, then clip 6+ reels from them in one session. Each video also goes inside Soul Ark as a masterclass. Use a carousel on sales days to explain exactly what people get.</div></div>
@@ -1300,6 +1333,9 @@ document.addEventListener('click', e => {
       save(); render(); break;
     }
     case 'toggleTask': toggleTask(id); break;
+    case 'themeMade': { const x = S.themes.find(y => y.id === id); if (x) { x.made = !x.made; save(); render(); } break; }
+    case 'delTheme': S.themes = S.themes.filter(x => x.id !== id); save(); render(); break;
+    case 'copyThemes': { const txt = themesText(addDays(weekStart(today()), contentWeek * 7)); (navigator.clipboard?.writeText(txt) || Promise.reject()).then(() => toast('Copied. Paste it anywhere'), () => toast('Copy blocked by the browser')); break; }
     case 'delTask': S.tasks = S.tasks.filter(x => x.id !== id); save(); render(); break;
     case 'delPay': if (confirm('Delete this payment?')) { const p = S.payments.find(x => x.id === id); if (p && p.counted) S.settings.goalCount = Math.max(0, (S.settings.goalCount || 0) - 1); S.payments = S.payments.filter(x => x.id !== id); save(); render(); } break;
     case 'taskFilter': taskFilter = el.dataset.c; render(); break;
@@ -1335,6 +1371,10 @@ document.addEventListener('submit', e => {
       S.leads.push({id:uid(), name:f.name.trim(), handle:f.handle.trim(), source:f.source, stage:f.stage, offer:f.offer || '', value:+f.value || 0, lastContact:f.lastContact || t, nextFollowUp:f.nextFollowUp, notes:f.notes, created:t, history:[{stage:f.stage, date:t}]});
       save(); closeModal(); render(); toast('Lead added');
     }
+  } else if (kind === 'theme') {
+    S.themes.push({id:uid(), date:f.date || t, emotion:f.emotion, source:f.source, pain:f.pain.trim(), idea:(f.idea || '').trim(), made:false});
+    save(); render(); toast('Logged');
+    const q = document.querySelector('form[data-form=theme] input[name=pain]'); if (q) q.focus();
   } else if (kind === 'quicklead') {
     const raw = f.name.trim(), next = noSun(addDays(t, S.settings.gap));
     S.leads.push({id:uid(), name:raw, handle:raw.startsWith('@') ? raw : '', source:f.source, stage:'dm', offer:'bridge', value:offerPrice('bridge'), lastContact:t, nextFollowUp:next, notes:'', created:t, history:[{stage:'dm', date:t}]});
