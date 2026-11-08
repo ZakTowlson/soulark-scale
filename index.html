@@ -206,6 +206,13 @@ td.r,th.r{text-align:right}
 .lad .st{padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid var(--line);font-weight:600;font-size:13px}
 .lad .st.end{background:rgba(202,163,28,.16);border-color:var(--gold);color:var(--gold2)}
 .lad .ar{color:var(--dim)}
+.tchips{display:flex;gap:6px;flex-wrap:wrap;flex:1 1 100%}
+.tchips label{position:relative;cursor:pointer}
+.tchips input{position:absolute;opacity:0;width:0;height:0;padding:0;border:0;pointer-events:none}
+.tchips span{display:inline-block;padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.04);font-weight:600;font-size:13px;color:var(--muted)}
+.tchips label:hover span{border-color:var(--line2)}
+.tchips input:checked + span{border-color:var(--gold);background:rgba(202,163,28,.16);color:var(--gold2)}
+.tchips input:focus-visible + span{outline:2px solid var(--gold);outline-offset:2px}
 .snote{white-space:pre-wrap;margin-top:4px;line-height:1.55}
 .qa label{display:block;font-weight:600;font-size:13.5px;margin:12px 0 5px}
 .qa textarea{min-height:76px;font-size:14px;line-height:1.55}
@@ -828,6 +835,8 @@ const scaleWeekOf = d => Math.floor(diff(S.scale.start, d) / 7) + 1;
 const curScaleWeek = () => Math.min(8, Math.max(1, scaleWeekOf(today())));
 const scaleWk = () => scaleWeekSel || curScaleWeek();
 const wkStart = n => addDays(S.scale.start, (n - 1) * 7);
+const wkRange = n => { const a = wkStart(n), b = addDays(a, 6), da = parse(a).getDate(), db = parse(b).getDate(), ma = mname(a.slice(0, 7)), mb = mname(b.slice(0, 7));
+  return ma === mb ? `${da}–${db} ${ma}` : `${da} ${ma} – ${db} ${mb}`; };   // e.g. "9–15 Nov" or "28 Dec – 3 Jan"
 const pName = id => (PILLARS.find(p => p.id === id) || {name:id}).name;
 const tName = id => (SCALE_TYPES.find(t => t[0] === id) || ['', id])[1];
 const ladder = (a, end) => `<div class="lad">${a.map(x => `<span class="st">${x}</span><span class="ar">→</span>`).join('')}<span class="st end">${end}</span></div>`;
@@ -873,14 +882,14 @@ function vScale() {
   const w = S.scale.weeks[n] || {}, wes = es.filter(e => e.week === n), cw = curScaleWeek();
   const status = d0 > 0 ? `<div class="chase-bar ok" style="margin-bottom:14px">Week 1 starts ${rel(S.scale.start)} (${fdate(S.scale.start)}). You can already write notes.</div>` : '';
   const pills = [...Array(8)].map((_, i) => i + 1).map(k => { const c = es.filter(e => e.week === k).length;
-    return `<button class="wkp ${k === n ? 'on' : ''} ${d0 <= 0 && k === cw ? 'now' : ''}" data-act="scaleWeek" data-n="${k}">Week ${k}<small>${c ? c + ' note' + (c === 1 ? '' : 's') : fdate(wkStart(k)).replace(/^\w+ /, '')}</small></button>`; }).join('');
+    return `<button class="wkp ${k === n ? 'on' : ''} ${d0 <= 0 && k === cw ? 'now' : ''}" data-act="scaleWeek" data-n="${k}">Week ${k}<small>${wkRange(k)}${c ? ' · ' + c : ''}</small></button>`; }).join('');
   return head + status + `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">${pills}</div>
-  <div class="card"><h2>Week ${n} <small>${fdate(wkStart(n))} to ${fdate(addDays(wkStart(n), 6))}${n === 1 ? ' · focus: marketing' : ''}</small></h2>
+  <div class="card"><h2><span>Week ${n} <span style="color:var(--gold2)">· ${wkRange(n)}</span></span><small>Monday to Sunday${n === 1 ? ' · focus: marketing' : ''}</small></h2>
     <form data-form="scalenote" class="inline" style="flex-wrap:wrap;gap:8px">
-      <select name="type" aria-label="Type" style="flex:1;min-width:170px">${SCALE_TYPES.map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select>
-      <select name="pillar" aria-label="Pillar" style="flex:1;min-width:130px">${PILLARS.map(p => `<option value="${p.id}" ${p.focus ? 'selected' : ''}>${p.name}</option>`).join('')}</select>
-      <textarea name="text" placeholder="What did you learn, change, do, or realise?" required rows="2" style="flex:3 1 100%;min-height:70px"></textarea>
-      <button class="btn">Add to week ${n}</button></form>
+      <div class="tchips" role="radiogroup" aria-label="What kind of note">${SCALE_TYPES.map(([k, l], i) => `<label><input type="radio" name="type" value="${k}" ${i === 0 ? 'checked' : ''}><span>${l}</span></label>`).join('')}</div>
+      <textarea name="text" placeholder="Write it here…" required rows="3" style="flex:1 1 100%;min-height:84px"></textarea>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex:1 1 100%"><span class="sub">About</span><select name="pillar" aria-label="Pillar" style="width:auto;min-width:160px">${PILLARS.map(p => `<option value="${p.id}" ${p.focus ? 'selected' : ''}>${p.name}</option>`).join('')}</select>
+        <button class="btn" style="margin-left:auto">Add to week ${n}</button></div></form>
     ${SCALE_TYPES.map(([k, l]) => { const g = wes.filter(e => e.type === k).reverse();
       return g.length ? `<div class="sec" style="margin-top:16px">${l} · ${g.length}</div>${g.map(e => `<div class="row"><div class="grow"><span class="chip">${pName(e.pillar)}</span> <span class="sub">${fdate(e.date)}</span><div class="snote">${esc(e.text)}</div></div>
         <button class="btn sm ${e.star ? 'good' : 'ghost'}" data-act="sStar" data-id="${e.id}" title="Star it if a client should learn this">${e.star ? '★ Playbook' : '☆ Playbook'}</button>
