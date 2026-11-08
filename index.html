@@ -870,7 +870,7 @@ function scaleWeekText(n) {
     (es.length ? es.map(e => `- ${SCALE_TYPES.some(t => t[0] === e.type) ? `[${tName(e.type).replace(/^\S+\s/, '')}] ` : ''}${e.pillar ? `[${pName(e.pillar)}] ` : ''}${e.star ? '[PLAYBOOK] ' : ''}${e.text}`).join('\n') : '(no notes yet)');
 }
 /* ---- fast fill: write step 1, Claude drafts the rest, paste it back and the boxes fill themselves ---- */
-function ladderPrompt(p) {
+function ladderPrompt(p, qa, auto) {
   const l = S.scale.ladder[p.id], r = rungPrompts(p), me = p.id === 'self', mine = RUNGS.filter(k => S.scale.ladder.self[k]);
   return `I am working through the Soul Ark Scale ladder for the pillar "${p.name}" (${p.tag}). ${p.def}
 The ladder has five steps: understand, value, belief, know how, action. ${me ? 'A person who understands themselves has more intrinsic value, more belief, knows what to do and is more willing to act.' : 'A client who understands this has more perceived value, more belief it can help, knows how it works and is more likely to act.'}
@@ -878,7 +878,7 @@ ${!me && mine.length ? `\nFor context, here is what I wrote about myself:\n${min
 Here is my answer to step 1 (${r.understand[1]}):
 "${l.understand.trim()}"
 
-Please draft the other steps for me, in the first person, in my own words, short and honest, using only what I have told you (ask me first if you need more):
+Please draft the other steps for me, in the first person, in my own words, short and honest, using only what I have told you${auto ? '' : ' (ask me first if you need more)'}:
 - value: ${r.value[1]}
 - believe: ${r.believe[1]}
 - know: ${r.know[1]}
@@ -892,7 +892,13 @@ Reply in EXACTLY this format and nothing else, so I can paste it straight into m
 [KNOW] ...
 [ACT] ...
 [CHANGE] ...
-[BUSINESS] ...`;
+[BUSINESS] ...${auto ? (qa ? `
+
+Here are my answers to your questions:
+${qa.map(x => `- ${x.q} ${x.a}`).join('\n') || '(no extra answers)'}
+Do not ask more questions. Draft now in the format above.` : `
+
+If my answer is too thin to draft honestly, reply with ONLY [QUESTIONS] on its own line followed by 2 or 3 short questions, one per line, each starting with "- ". Otherwise draft straight away in the format above.`) : ''}`;
 }
 function parseLadderImport(txt) {
   const out = {}; let cur = null;
@@ -905,16 +911,66 @@ function parseLadderImport(txt) {
   return out;
 }
 const scoreRow = (pid, k, cur) => `<div class="scorerow" role="group" aria-label="Score 1 to 10">${[1,2,3,4,5,6,7,8,9,10].map(n => `<button class="${cur === n ? 'on' : ''}" data-sv="${n <= 3 ? 'lo' : n <= 6 ? 'mid' : 'hi'}" data-act="ladScore" data-p="${pid}" data-k="${k}" data-n="${n}" aria-label="Score ${n}">${n}</button>`).join('')}</div>`;
-const stepOneBox = p => { const l = S.scale.ladder[p.id], r = rungPrompts(p);
+/* ---- Claude connection (your own key, kept only in this browser, never in backups) ---- */
+const AI_KEY = 'coachos.claudekey', AI_MODEL = 'claude-sonnet-5-5';
+const AI_SYSTEM = 'You help a life coach and online-community founder reflect honestly on themselves and their business. Write in the first person as them, in plain simple words, short and specific. No jargon, no flattery, and no made-up facts: use only what they told you. Follow the reply format exactly.';
+const getKey = () => { try { return localStorage.getItem(AI_KEY) || ''; } catch (e) { return ''; } };
+let aiState = {};   // per pillar: {busy, err, qs, ans}
+async function claudeCall(system, user, maxTokens = 1600) {
+  let res;
+  try {
+    res = await fetch('https://api.anthropic.com/v1/messages', {method:'POST',
+      headers:{'content-type':'application/json', 'x-api-key':getKey(), 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:AI_MODEL, max_tokens:maxTokens, system, messages:[{role:'user', content:user}]})});
+  } catch (e) { throw new Error('Could not reach Claude. Check your internet connection.'); }
+  let j = {}; try { j = await res.json(); } catch (e) {}
+  if (!res.ok) throw new Error(res.status === 401 ? 'Claude did not accept your key. Check it in Settings.' : res.status === 429 ? 'Claude is busy or you hit a limit. Wait a minute and try again.' : (j.error && j.error.message) || ('Claude returned an error (' + res.status + ').'));
+  const t = (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('\n').trim();
+  if (!t) throw new Error('Claude sent back an empty reply. Try again.');
+  return t;
+}
+function applyLadder(pl, got) {
+  const l = S.scale.ladder[pl.id], keys = Object.keys(got).filter(k => k !== 'understand' || !l.understand.trim());
+  if (!keys.length) return 0;
+  const clash = keys.filter(k => (l[k] || '').trim() && l[k].trim() !== got[k]).length;
+  if (clash && !confirm(`This will replace what you already wrote in ${clash} box${clash === 1 ? '' : 'es'}. Continue?`)) return -1;
+  keys.forEach(k => { l[k] = got[k]; }); if (drafts.__imp) delete drafts.__imp[pl.id]; saveDrafts(); save(); return keys.length;
+}
+async function aiRun(pid, qa) {
+  const pl = PILLARS.find(x => x.id === pid), st = aiState[pid] = aiState[pid] || {};
+  if (!getKey()) { toast('Add your Claude key in Settings first'); return; }
+  if (st.busy) return;
+  if (!S.scale.ladder[pid].understand.trim()) { toast('Write step 1 first'); return; }
+  st.busy = true; st.err = ''; render();
+  try {
+    const text = await claudeCall(AI_SYSTEM, ladderPrompt(pl, qa, true));
+    if (qa === undefined && /\[QUESTIONS\]/i.test(text)) {
+      st.qs = text.split(/\[QUESTIONS\]/i)[1].split(/\r?\n/).map(x => x.replace(/^[\s\-*\d.)]+/, '').trim()).filter(Boolean).slice(0, 4); st.ans = st.qs.map(() => '');
+      if (!st.qs.length) throw new Error('Claude replied in a format I could not read. Try again.');
+    } else {
+      const got = parseLadderImport(text); if (!Object.keys(got).length) throw new Error('Claude replied in a format I could not read. Try again.');
+      const n = applyLadder(pl, got); st.qs = [];
+      if (n > 0) toast(`Filled ${n} box${n === 1 ? '' : 'es'}. Read each one, fix anything untrue, then score each step`);
+    }
+  } catch (e) { st.err = e.message || 'Something went wrong. Try again.'; }
+  st.busy = false; render();
+}
+const stepOneBox = p => { const l = S.scale.ladder[p.id], r = rungPrompts(p), st = aiState[p.id] || {}, hasKey = !!getKey();
   return `<div class="card" style="background:rgba(202,163,28,.06);border-color:var(--line2);margin:4px 0 16px"><h2>${r.understand[0]} <small>write this one in as much detail as you can. The rest is drafted from it</small></h2>
   <div class="sub" style="margin-bottom:8px">${r.understand[1]}</div>
   <textarea id="l-${p.id}-understand" data-lad="${p.id}:understand" placeholder="Write everything: your strengths, patterns, fears, what drives you, what holds you back…" style="min-height:190px;font-size:15px;line-height:1.6">${esc(l.understand)}</textarea>
   <div class="sub" style="margin-top:10px">How well do I really understand this? (1 to 10)</div>${scoreRow(p.id, 'understand', l.sc.understand)}
   <div class="sec" style="margin-top:18px">Then let Claude draft the rest</div>
-  <div class="sub" style="color:var(--text);line-height:1.6;margin:6px 0 10px"><b>1.</b> Press <b>Copy for Claude</b> and paste it into Claude. <b>2.</b> Paste Claude's reply below and press <b>Fill the boxes</b>. <b>3.</b> Read each box, fix what isn't true, and score each step yourself.</div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="btn sm" data-act="ladCopy" data-p="${p.id}">Copy for Claude</button></div>
-  <textarea id="imp-${p.id}" data-imp="${p.id}" placeholder="Paste Claude's reply here (the part that starts with [VALUE])…" style="min-height:80px">${esc((drafts.__imp || {})[p.id] || '')}</textarea>
-  <div style="margin-top:8px"><button class="btn sm ghost" data-act="ladFill" data-p="${p.id}">Fill the boxes</button></div></div>`; };
+  ${hasKey ? `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0"><button class="btn" data-act="aiDraft" data-p="${p.id}" ${st.busy ? 'disabled' : ''}>${st.busy ? 'Thinking… a few seconds' : 'Draft the rest'}</button><span class="sub">or press Cmd+Enter inside the box above</span></div>`
+    : `<div class="sub" style="color:var(--text);line-height:1.6;margin:8px 0 10px">To make this automatic, add your Claude key once in Settings. <button class="btn sm ghost" data-act="go" data-v="settings" style="margin-left:6px">Open Settings</button></div>`}
+  ${st.err ? `<div class="chase-bar" style="margin:8px 0">${esc(st.err)}</div>` : ''}
+  ${st.qs && st.qs.length ? `<div class="card" style="margin:10px 0;background:rgba(255,255,255,.03)"><h2>A few quick questions <small>so I get this right</small></h2>${st.qs.map((q, i) => `<label class="fld"><span>${esc(q)}</span><input data-aiq="${p.id}:${i}" value="${esc((st.ans || [])[i] || '')}" placeholder="Your answer…"></label>`).join('')}
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="aiContinue" data-p="${p.id}" ${st.busy ? 'disabled' : ''}>${st.busy ? 'Thinking…' : 'Continue'}</button><button class="btn ghost" data-act="aiSkip" data-p="${p.id}" ${st.busy ? 'disabled' : ''}>Just draft it</button></div></div>` : ''}
+  <details style="margin-top:12px"><summary class="sub" style="cursor:pointer">Or do it by hand (copy and paste)</summary>
+    <div class="sub" style="color:var(--text);line-height:1.6;margin:10px 0">Press <b>Copy for Claude</b>, paste it into a Claude chat, then paste Claude's reply below and press <b>Fill the boxes</b>.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="btn sm" data-act="ladCopy" data-p="${p.id}">Copy for Claude</button></div>
+    <textarea id="imp-${p.id}" data-imp="${p.id}" placeholder="Paste Claude's reply here (the part that starts with [VALUE])…" style="min-height:80px">${esc((drafts.__imp || {})[p.id] || '')}</textarea>
+    <div style="margin-top:8px"><button class="btn sm ghost" data-act="ladFill" data-p="${p.id}">Fill the boxes</button></div></details></div>`; };
 function ladderText() {
   const out = PILLARS.map(p => { const l = S.scale.ladder[p.id], r = rungPrompts(p), has = RUNGS.some(k => l[k] || l.sc[k]) || l.change || l.biz; if (!has) return '';
     return `## ${p.name} (${p.tag})\n` + RUNGS.map(k => (l[k] || l.sc[k]) ? `${r[k][0]}${l.sc[k] ? ` [${l.sc[k]}/10]` : ''}: ${l[k] || '(no answer)'}` : '').filter(Boolean).join('\n') + (l.change ? `\nWhat needs to change: ${l.change}` : '') + (l.biz ? `\nHow I will reflect it in the business: ${l.biz}` : ''); }).filter(Boolean);
@@ -1329,7 +1385,12 @@ function vSettings() {
     ${fld('Content pieces', 'contentTarget', s.contentTarget, 'number', 'min="1"')}
     ${fld('Your next offer (phase 2)', 'nextOffer', s.nextOffer)}
     <div class="mfoot"><button class="btn">Save settings</button></div></form></div>
-  <div class="stack"><div class="card"><h2>Your data</h2>
+  <div class="stack"><div class="card"><h2>Claude connection <small>for automatic drafting on the Pillars tab</small></h2>
+    ${getKey() ? `<div class="chip good" style="margin-bottom:10px">✓ Key saved (ends …${esc(getKey().slice(-4))})</div><div class="inline"><button class="btn ghost" data-act="aiTest">Test connection</button><button class="btn danger" data-act="aiRemoveKey">Remove key</button></div>`
+    : `<div class="sub" style="color:var(--text);line-height:1.7;margin-bottom:10px">1. Go to <a href="https://console.anthropic.com" target="_blank" rel="noopener" style="color:var(--gold2)">console.anthropic.com</a> and sign in.<br>2. Under Billing, add a few dollars of credit (this is separate from your Claude subscription).<br>3. Under API keys, create a key and copy it.<br>4. Paste it below.</div>
+    <div class="inline"><input id="aikey" type="password" placeholder="Paste your key here" autocomplete="off"><button class="btn" data-act="aiSaveKey">Save key</button></div>`}
+    <p class="sub" style="margin-top:10px">The key stays in this browser only. It is not in your backups or exports. Each draft costs a few cents.</p></div>
+  <div class="card"><h2>Your data</h2>
     <p class="sub" style="margin-bottom:12px">Everything lives in this browser on this computer. Export a backup regularly, and use it to move to another device.</p>
     <div class="inline"><button class="btn ghost" data-act="export">Export backup</button>
     <label class="btn ghost" style="cursor:pointer">Import backup<input type="file" accept=".json,application/json" id="importFile" hidden></label></div>${snapsHtml()}</div>
@@ -1530,12 +1591,16 @@ document.addEventListener('click', e => {
     case 'scaleTab': scaleTab = el.dataset.t; render(); break;
     case 'ladCopy': { const pl = PILLARS.find(x => x.id === el.dataset.p); if (!S.scale.ladder[pl.id].understand.trim()) { toast('Write step 1 first, then copy'); break; }
       (navigator.clipboard?.writeText(ladderPrompt(pl)) || Promise.reject()).then(() => toast('Copied. Paste it into Claude'), () => toast('Copy blocked by the browser')); break; }
-    case 'ladFill': { const pl = PILLARS.find(x => x.id === el.dataset.p), l = S.scale.ladder[pl.id], box = document.getElementById('imp-' + pl.id), got = parseLadderImport(box ? box.value : '');
-      const keys = Object.keys(got).filter(k => k !== 'understand' || !l.understand.trim());
-      if (!keys.length) { toast('Could not find the [VALUE], [BELIEVE]… headings. Paste Claude’s whole reply'); break; }
-      const clash = keys.filter(k => (l[k] || '').trim() && l[k].trim() !== got[k]).length;
-      if (clash && !confirm(`This will replace what you already wrote in ${clash} box${clash === 1 ? '' : 'es'}. Continue?`)) break;
-      keys.forEach(k => { l[k] = got[k]; }); if (drafts.__imp) delete drafts.__imp[pl.id]; saveDrafts(); save(); render(); toast(`Filled ${keys.length} box${keys.length === 1 ? '' : 'es'}. Read them, fix anything untrue, then score each step`); break; }
+    case 'ladFill': { const pl = PILLARS.find(x => x.id === el.dataset.p), box = document.getElementById('imp-' + pl.id), got = parseLadderImport(box ? box.value : '');
+      if (!Object.keys(got).length) { toast('Could not find the [VALUE], [BELIEVE]… headings. Paste Claude’s whole reply'); break; }
+      const n = applyLadder(pl, got); if (n > 0) { render(); toast(`Filled ${n} box${n === 1 ? '' : 'es'}. Read each one, fix anything untrue, then score each step`); } break; }
+    case 'aiDraft': aiRun(el.dataset.p); break;
+    case 'aiSkip': aiRun(el.dataset.p, []); break;
+    case 'aiContinue': { const st = aiState[el.dataset.p] || {}; aiRun(el.dataset.p, (st.qs || []).map((q, i) => ({q, a:(st.ans || [])[i] || ''})).filter(x => x.a.trim())); break; }
+    case 'aiSaveKey': { const v = (document.getElementById('aikey') || {}).value || ''; if (!/^sk-/.test(v.trim())) { toast('That does not look like a Claude key (it starts with sk-)'); break; }
+      try { localStorage.setItem(AI_KEY, v.trim()); } catch (e) { toast('Could not save the key in this browser'); break; } render(); toast('Key saved. Press Test connection to check it'); break; }
+    case 'aiRemoveKey': try { localStorage.removeItem(AI_KEY); } catch (e) {} aiState = {}; render(); toast('Key removed'); break;
+    case 'aiTest': { toast('Testing…'); claudeCall('Reply with the single word OK.', 'Test', 10).then(() => toast('Connected ✓ Claude is ready'), e => toast(e.message)); break; }
     case 'scalePillar': scalePillar = el.dataset.p; saveUI(); render(); break;
     case 'ladScore': { const l = S.scale.ladder[el.dataset.p], k = el.dataset.k, n = +el.dataset.n; l.sc[k] = l.sc[k] === n ? 0 : n; save(); render(); break; }
     case 'ladAdd': { const pl = PILLARS.find(x => x.id === el.dataset.p), txt = (S.scale.ladder[pl.id].biz || '').trim(); if (!txt) { toast('Write the action first'); break; }
@@ -1567,6 +1632,7 @@ document.addEventListener('click', e => {
   }
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+document.addEventListener('keydown', e => { const d = e.target.dataset; if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && d && d.lad && d.lad.endsWith(':understand')) { e.preventDefault(); aiRun(d.lad.split(':')[0]); } });
 
 document.addEventListener('submit', e => {
   const form = e.target.closest('form[data-form]'); if (!form) return;
@@ -1730,7 +1796,8 @@ document.addEventListener('change', e => {
 
 document.addEventListener('input', e => {   // Scale Notes boxes save as you type
   const d = e.target.dataset; if (!d) return;
-  if (d.imp) { drafts.__imp = drafts.__imp || {}; drafts.__imp[d.imp] = e.target.value; saveDrafts(); }
+  if (d.aiq) { const [pp, ii] = d.aiq.split(':'); const st = aiState[pp] = aiState[pp] || {}; st.ans = st.ans || []; st.ans[+ii] = e.target.value; }
+  else if (d.imp) { drafts.__imp = drafts.__imp || {}; drafts.__imp[d.imp] = e.target.value; saveDrafts(); }
   else if (d.lad) { const [p, k] = d.lad.split(':'); S.scale.ladder[p][k] = e.target.value; save(); }
   else if (d.sq) { const [p, i] = d.sq.split(':'); S.scale.answers[p][+i] = e.target.value; save(); }
   else if (d.spb) { S.scale.playbook[d.spb] = e.target.value; save(); }
