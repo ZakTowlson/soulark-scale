@@ -248,8 +248,9 @@ td.r,th.r{text-align:right}
 .tick.off{border-style:dashed;cursor:default}
 .restnote{background:rgba(202,163,28,.08);border:1px solid var(--line2);border-radius:12px;padding:12px 16px;color:var(--gold2);font-weight:600;margin-bottom:8px}
 .mini i.offbar{background:rgba(255,255,255,.14)}
-.nnl{display:grid;grid-template-columns:1fr 1fr;column-gap:32px}
-.nnl .row:nth-child(-n+2){border-top:0}
+.nnl{display:block}
+.nnl .row:first-child{border-top:0}
+.nnnum{flex:none;min-width:24px;text-align:right;font:700 15px var(--head);color:var(--gold2)}
 .dchart{position:relative;display:grid;grid-template-columns:repeat(30,1fr);height:200px;align-items:end;border-bottom:1px solid var(--line);margin-top:28px}
 .dchart .dc{height:100%;display:flex;align-items:flex-end;justify-content:center}
 .dchart .dc i{width:62%;background:rgba(202,163,28,.75);border-radius:3px 3px 0 0;min-height:1px;display:block}
@@ -266,7 +267,7 @@ td.r,th.r{text-align:right}
 .catrow{display:grid;grid-template-columns:120px 1fr 96px;gap:10px;align-items:center;padding:5px 0}
 .catrow .bar{margin:0}
 @media(max-width:1000px){.grid{grid-template-columns:1fr}}
-@media(max-width:700px){.crow{grid-template-columns:1fr}.cticks{justify-content:flex-start}.nnl{grid-template-columns:1fr}.nnl .row:nth-child(2){border-top:1px solid var(--line)}.gnum{font-size:60px}.catrow{grid-template-columns:90px 1fr 80px}}
+@media(max-width:700px){.crow{grid-template-columns:1fr}.cticks{justify-content:flex-start}.gnum{font-size:60px}.catrow{grid-template-columns:90px 1fr 80px}}
 @media(max-width:900px){
   .app{grid-template-columns:minmax(0,1fr)}
   .side{position:static;height:auto;flex-direction:row;align-items:center;padding:10px 12px;gap:10px;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line)}
@@ -863,14 +864,14 @@ function nnCard() {
   const t = today(), sun = isSunday(t);
   const active = S.nonneg.filter(n => nnApplies(n, t)), off = S.nonneg.filter(n => !nnApplies(n, t));
   const done = active.filter(n => isDone(n.id)).length, total = active.length, sk = nnStreak();
-  const row = (n, rest) => `<div class="row ${rest ? 'offrow' : ''}" ${nnReorder ? `data-nn="${n.id}"` : ''}>${nnReorder ? '<span class="grip" draggable="true" title="Drag to reorder">⠿</span>' : ''}${rest ? '<span class="tick off"></span>' : `<button class="tick ${isDone(n.id) ? 'done' : ''}" data-act="nnToggle" data-id="${n.id}" aria-label="Done">${TICK}</button>`}
+  const row = (n, rest, i) => `<div class="row ${rest ? 'offrow' : ''}" ${nnReorder ? `data-nn="${n.id}"` : ''}>${nnReorder ? '<span class="grip" draggable="true" title="Drag to reorder">⠿</span>' : ''}<span class="nnnum" aria-hidden="true">${i + 1}</span>${rest ? '<span class="tick off"></span>' : `<button class="tick ${isDone(n.id) ? 'done' : ''}" data-act="nnToggle" data-id="${n.id}" aria-label="Done">${TICK}</button>`}
     <div class="grow ${isDone(n.id) && !rest ? 'done-t' : ''}">${nnReorder ? `<input class="nninput" data-nn-title="${n.id}" value="${esc(n.title)}" aria-label="Rename">` : `<b style="font-weight:600">${esc(n.title)}</b>`}${n.auto ? ` <span class="chip">${DM_AUTO[n.auto] ? (n.auto === 'tiktok' ? 'from TikTok count' : 'from DM count') : 'from Content'}</span>` : ''}</div>
     ${nnReorder ? `<span class="mvs"><button class="mv" data-act="nnMove" data-id="${n.id}" data-dir="-1" aria-label="Move up">▲</button><button class="mv" data-act="nnMove" data-id="${n.id}" data-dir="1" aria-label="Move down">▼</button></span>` : ''}<button class="sunbtn ${n.sun ? 'on' : ''}" data-act="nnSun" data-id="${n.id}" title="Tap to ${n.sun ? 'stop doing' : 'also do'} this on Sundays">Sun</button><button class="x" data-act="nnDel" data-id="${n.id}" aria-label="Remove">×</button></div>`;
   const small = sun ? (total ? `${done} / ${total} done · Sunday: only items marked Sun` : 'Sunday is your day off · streak is safe') : `${done} / ${total} done today · ${sk ? sk + '-day streak' : 'complete all of them to start a streak'}`;
   return `<div class="card" style="margin-bottom:16px"><h2><span>My daily non-negotiables</span><span style="display:flex;gap:12px;align-items:center"><small>${small}</small><button class="btn sm ${nnReorder ? '' : 'ghost'}" data-act="nnReorder">${nnReorder ? 'Done' : 'Edit'}</button></span></h2>
     ${sun && !total ? '<div class="restnote">🙏 Sunday is your day of rest. Nothing is required today, and your streak is safe' + (sk ? ` (${sk}-day streak).` : '.') + '</div>' : bar(total ? done / total * 100 : 0, done === total && total ? 'g' : '')}
-    <div class="nnl" style="margin-top:6px">${active.map(n => row(n, false)).join('') || ''}</div>
-    ${off.length && sun ? `<div class="sec" style="margin-top:14px">Day off today (Monday to Saturday only)</div><div class="nnl">${off.map(n => row(n, true)).join('')}</div>` : ''}
+    <div class="nnl" style="margin-top:6px">${active.map((n, i) => row(n, false, i)).join('') || ''}</div>
+    ${off.length && sun ? `<div class="sec" style="margin-top:14px">Day off today (Monday to Saturday only)</div><div class="nnl">${off.map((n, i) => row(n, true, i)).join('')}</div>` : ''}
     ${!S.nonneg.length ? '<div class="empty">Add the things you will do every day, no matter what.</div>' : ''}
     <form data-form="nn" class="inline" style="margin-top:12px"><input name="title" placeholder="Add a non-negotiable…" required><button class="btn sm">Add</button></form>
     <div class="sub" style="margin-top:8px">Runs Monday to Saturday. Tap <b>Sun</b> on any item you want to keep doing on Sundays too. Press <b>Edit</b> to rename, reorder or remove items.</div></div>`;
