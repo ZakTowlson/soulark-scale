@@ -189,6 +189,9 @@ td.r,th.r{text-align:right}
 .gtitle{font:600 17px/1.35 var(--head);margin:14px 0 4px}
 .ident{background:linear-gradient(135deg,rgba(202,163,28,.14),rgba(202,163,28,.03));border-color:var(--line2)}
 .idtext{font:500 17px/1.7 var(--head);margin:4px 0 16px}
+.idtext.fold{max-height:calc(1.7em * 3);overflow:hidden;position:relative;-webkit-mask-image:linear-gradient(#000 55%,transparent);mask-image:linear-gradient(#000 55%,transparent)}
+.hbtns{display:flex;gap:6px;align-items:center}
+.fbtn{min-width:34px}
 .mission{border-color:var(--line2);background:linear-gradient(135deg,rgba(255,255,255,.04),rgba(202,163,28,.08))}
 .crow{display:grid;grid-template-columns:110px 1fr auto;gap:14px;align-items:center;padding:14px 16px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;background:var(--panel2)}
 .crow.today{border-color:var(--gold);background:rgba(202,163,28,.08)}
@@ -582,6 +585,8 @@ const NAV = [['today','Today','home'],['content','Content schedule','film'],['pi
 let view = (location.hash || '').replace('#', '') || 'today';
 if (!NAV.some(n => n[0] === view)) view = 'today';
 let proofRange = 90, taskFilter = 'All';
+let folded = {identity:false, mission:false};   // identity / mission statement collapsed?
+const foldBtn = k => `<button class="btn sm ghost fbtn" data-act="fold" data-k="${k}" aria-expanded="${!folded[k]}" aria-label="${folded[k] ? 'Expand' : 'Collapse'}" title="${folded[k] ? 'Show the full statement' : 'Make it smaller'}">${folded[k] ? '＋ Expand' : '－ Collapse'}</button>`;
 
 function renderSide() {
   const st = S.settings, rev = monthRev(monthKey()), due = followCount(), tk = dueTasks().length;
@@ -682,13 +687,13 @@ function goalCard() {
 }
 function identityCard() {
   const read = S.nonneg.find(n => n.key === 'identity'), isRead = read && isDone(read.id);
-  return `<div class="card ident"><h2><span>Identity statement ${S.identity === DEFAULT_IDENTITY ? '<span class="chip warn">Draft — make it yours</span>' : ''}</span><button class="btn sm ghost" data-act="editIdentity">Edit</button></h2>
-    <div class="idtext">${esc(S.identity).replace(/\n/g, '<br>')}</div>
+  return `<div class="card ident"><h2><span>Identity statement ${S.identity === DEFAULT_IDENTITY ? '<span class="chip warn">Draft — make it yours</span>' : ''}</span><span class="hbtns">${foldBtn('identity')}<button class="btn sm ghost" data-act="editIdentity">Edit</button></span></h2>
+    <div class="idtext ${folded.identity ? 'fold' : ''}">${esc(S.identity).replace(/\n/g, '<br>')}</div>
     ${read ? `<button class="btn ${isRead ? 'good' : ''}" data-act="nnToggle" data-id="${read.id}">${isRead ? '✓ Read aloud today' : 'I’ve read it aloud'}</button>` : ''}</div>`;
 }
 function missionCard() {
-  return `<div class="card mission"><h2><span>Mission statement ${S.mission === DEFAULT_MISSION ? '<span class="chip warn">Draft — make it yours</span>' : ''}</span><button class="btn sm ghost" data-act="editMission">Edit</button></h2>
-    <div class="idtext" style="margin-bottom:4px">${esc(S.mission).replace(/\n/g, '<br>')}</div></div>`;
+  return `<div class="card mission"><h2><span>Mission statement ${S.mission === DEFAULT_MISSION ? '<span class="chip warn">Draft — make it yours</span>' : ''}</span><span class="hbtns">${foldBtn('mission')}<button class="btn sm ghost" data-act="editMission">Edit</button></span></h2>
+    <div class="idtext ${folded.mission ? 'fold' : ''}" style="margin-bottom:4px">${esc(S.mission).replace(/\n/g, '<br>')}</div></div>`;
 }
 function nnCard() {
   const t = today(), sun = isSunday(t);
@@ -1281,6 +1286,7 @@ document.addEventListener('click', e => {
     case 'goalBump': { const g = S.settings; g.goalCount = Math.max(0, (g.goalCount || 0) + +el.dataset.n); save(); render(); if (g.goalCount === g.goalTarget && +el.dataset.n > 0) toast('Goal hit! 🎯'); break; }
     case 'editIdentity': identityForm(); break;
     case 'editMission': missionForm(); break;
+    case 'fold': folded[el.dataset.k] = !folded[el.dataset.k]; saveUI(); render(); break;
     case 'editDay': dayForm(id); break;
     case 'contentTick': { const d = el.dataset.date, l = S.contentLog[d] = S.contentLog[d] || {}; l[el.dataset.k] = !l[el.dataset.k]; save(); render(); break; }
     case 'weekNav': contentWeek = +el.dataset.n === 0 ? 0 : contentWeek + +el.dataset.n; render(); break;
@@ -1431,13 +1437,14 @@ function restoreDrafts(root) {
   const orig = window[name];
   window[name] = function (id) { drafts.__modal = {name, id}; saveDrafts(); return orig(id); };
 });
-function saveUI() { try { localStorage.setItem(UI_KEY, JSON.stringify({view, taskFilter, proofRange, spendMode})); } catch (e) {} }
+function saveUI() { try { localStorage.setItem(UI_KEY, JSON.stringify({view, taskFilter, proofRange, spendMode, folded})); } catch (e) {} }
 function loadUI() {
   let ui = {}; try { ui = JSON.parse(localStorage.getItem(UI_KEY)) || {}; } catch (e) {}
   if (!location.hash && NAV.some(n => n[0] === ui.view)) view = ui.view;
   if (typeof ui.taskFilter === 'string' && ['All', ...CATS].includes(ui.taskFilter)) taskFilter = ui.taskFilter;
   if ([0, 30, 90].includes(ui.proofRange)) proofRange = ui.proofRange;
   if (ui.spendMode === 'all' || ui.spendMode === 'everyday') spendMode = ui.spendMode;
+  if (ui.folded && typeof ui.folded === 'object') folded = {identity: !!ui.folded.identity, mission: !!ui.folded.mission};
 }
 let scrollT;
 window.addEventListener('scroll', () => { clearTimeout(scrollT); scrollT = setTimeout(() => { try { sessionStorage.setItem('coachos.scroll', JSON.stringify({view, y:scrollY})); } catch (e) {} }, 150); }, {passive:true});
