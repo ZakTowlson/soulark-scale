@@ -212,6 +212,12 @@ td.r,th.r{text-align:right}
 .scorerow button.on[data-sv=lo]{background:rgba(238,98,98,.22);border-color:var(--bad);color:#FF9B9B}
 .scorerow button.on[data-sv=mid]{background:rgba(242,169,59,.2);border-color:var(--warn);color:var(--warn)}
 .scorerow button.on[data-sv=hi]{background:rgba(67,192,138,.2);border-color:var(--good);color:var(--good)}
+.blist{margin:8px 0 0;padding-left:18px}.blist li{margin:7px 0;line-height:1.55}
+.iq{border-left:3px solid var(--gold);padding:5px 12px;margin:9px 0;font-style:italic;line-height:1.5}
+.persona{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center}
+@media(max-width:640px){.persona{grid-template-columns:1fr;justify-items:center;text-align:center}}
+.ptag{font:600 19px/1.35 var(--head);margin:4px 0 10px}
+.idea .hook{font-weight:600;line-height:1.45}
 .snote{white-space:pre-wrap;margin-top:4px;line-height:1.55}
 .qa label{display:block;font-weight:600;font-size:13.5px;margin:12px 0 5px}
 .qa textarea{min-height:76px;font-size:14px;line-height:1.55}
@@ -437,6 +443,63 @@ const normScale = o => { const d = defaultScale(), x = {...d, ...(o || {})};
   x.answers = {...d.answers, ...(x.answers || {})}; PILLARS.forEach(p => { x.answers[p.id] = p.qs.map((_, i) => (x.answers[p.id] || [])[i] || ''); });
   x.ladder = x.ladder || {}; PILLARS.forEach(p => { const l = x.ladder[p.id] || {}; const old = l.ufree === undefined && !l.uq && (l.understand || '').trim() ? l.understand : ''; x.ladder[p.id] = {...blankLadder(), ...l, uq:{...(l.uq || {})}, sc:{...blankLadder().sc, ...(l.sc || {})}}; if (old) x.ladder[p.id].ufree = old; });
   x.playbook = {...d.playbook, ...(x.playbook || {})}; x.weeks = x.weeks || {}; x.entries = Array.isArray(x.entries) ? x.entries : []; return x; };
+/* ---- ICP: the man Zak is talking to in everything he posts. Drafted from his own answers; he edits it ---- */
+const ICP_SECTIONS = [
+  ['words', 'In his own words', 'The things he actually says out loud or thinks.', 'quote'],
+  ['pains', 'Pain points', 'What hurts right now.', 'list'],
+  ['fears', 'What he is afraid of', '', 'list'],
+  ['stories', 'Stories he tells himself', 'The thoughts running on repeat.', 'list'],
+  ['beliefs', 'What he believes', 'About himself, God, success and men.', 'list'],
+  ['world', 'How he sees the world', '', 'list'],
+  ['desires', 'What he really wants', '', 'list'],
+  ['before', 'His life before', '', 'list'],
+  ['after', 'His life after', '', 'list'],
+  ['notfor', 'Who it is NOT for', 'So the right men feel it is for them.', 'list'],
+  ['learn', 'Still to learn about him', 'Ask these in DMs, calls and the webinar. Log the answers in Common themes.', 'list'],
+];
+const ICP_TAGS = ['Reach reel', 'Sales', 'Client proof', 'My story', 'YouTube', 'Story'];
+const defaultIcp = () => ({
+  name:'Daniel', age:'24', tag:'The man who gives everything but still feels behind',
+  chips:['Aged 18 to 30', 'Believes in God', 'Ambitious, big goals', 'Stuck in his head', 'Wants to make his family proud'],
+  lists:{
+    words:['I give everything I have, but I still feel behind.', 'I know exactly what I need to do. I just can’t bring myself to do it.', 'I keep starting over.', 'Every time something good happens, I mess it up.', 'I’ve wasted so much time, and I took what my family gave me for granted.', 'I don’t trust myself or my own judgment anymore.', 'I love God, but I also love my passions, and I don’t know how to hold both.', 'People think I have it figured out. Inside I’m struggling.'],
+    pains:['Gives everything he has but still feels behind. Works hard and gets nowhere.', 'Keeps starting over, stuck in the same cycle.', 'Self-sabotages when good things happen and pushes them away.', 'Stuck in his head: talks and thinks about his goals but struggles to act.', 'Knows what he has to do but can’t bring himself to do it.', 'Carries guilt from his past, from wasted time and from taking his family for granted.', 'Has lost hope and no longer believes in himself.', 'Does not trust himself or his own judgment anymore.', 'Trapped in a destructive cycle: lust, temptation, debt, gambling.', 'Keeps his head up on the outside but is struggling inside.', 'Struggles to hold his faith and his passions together.', 'Has no one to be honest with, so he hides it.'],
+    fears:['Wasting more time.', 'Failing, and what failing would say about him.', 'Letting his family down and not making them proud.', 'Never breaking through and staying stuck for good.', 'Never finding his purpose.', 'Being found out as someone who does not have it together.'],
+    stories:['“I’m behind everyone else.”', '“I’ve wasted my time and my chances.”', '“I’m someone who doesn’t follow through.”', '“If I try and fail, it proves I’m not enough.”', '“I’ll start properly on Monday.”', '“If I just work harder, I’ll finally feel better.”', '“Nobody would understand what’s really going on.”', '“I don’t deserve the good things that are happening.”'],
+    beliefs:['He believes in God and a bigger purpose, but his faith and his ambitions feel like they clash.', 'He believes he has to figure it out alone and keep his head up.', 'He believes the answer is outside: more money, more discipline, more hustle.', 'He no longer believes he can trust himself to follow through.', 'He believes struggle is weakness and men don’t talk about it.'],
+    world:['Life happens to me, not for me.', 'If I work hard enough it should work. When it doesn’t, it must be me.', 'Real men handle it alone.', 'Faith is one part of life and ambition is another, and they pull against each other.'],
+    desires:['A reason to live: purpose and meaning.', 'Hope again, and belief in himself.', 'Brothers who keep him accountable and a place to belong and be honest.', 'To make his family proud.', 'His motivation, drive and passion back.', 'Life to happen for him, with a bright future.', 'To close the gap between what he says he wants and what he actually does.'],
+    before:['Ambitious, with big goals, and believes in God and a bigger purpose.', 'But feels hopeless, sad and stuck.', 'Working hard and getting nowhere.', 'Self-sabotaging and falling into temptation.', 'Stuck in his head with no purpose and no meaning.'],
+    after:['Knows who he is and what his purpose is.', 'Believes in himself again.', 'Has motivation, drive and passion for what he does.', 'Is part of something bigger, with brothers beside him.', 'Life happens for him now, and comes from him, not at him.', 'The future looks bright.'],
+    notfor:['The man full of ego and pride who only cares about money.', 'The man who already thinks he has it all figured out.', 'The man who does not believe in God or a higher purpose.', 'The man who is not open to change.'],
+    learn:['Where does he spend his time online, and who does he follow?', 'What does he search for or watch when he is struggling?', 'What exact words does he use for his problem?', 'What has he already tried?', 'What finally makes him decide to invest in himself?', 'What stops him buying: the price, trust, timing or doubt?', 'How does he first find me?'],
+  },
+  ideas:[
+    ['Reach reel','If you give everything and still feel behind, this is why.','Explain the gap between what he says he wants and what his actions show.'],
+    ['Reach reel','You’re not lazy. You’re stuck in your head.','The loop: thought, doubt, procrastination, wasted time. Then one small action to break it.'],
+    ['Reach reel','Why you keep starting over (and what to do on day 2).',''],
+    ['Reach reel','The reason you self-sabotage right when things start going well.',''],
+    ['Reach reel','You know what to do. So why can’t you do it?',''],
+    ['Reach reel','You don’t need more motivation. You need brothers who ask if you did it.','Accountability and brotherhood.'],
+    ['Reach reel','How to love God and still chase big goals.','Faith and ambition do not have to clash.'],
+    ['Reach reel','The guilt of wasting your time, and how to stop paying for it every day.',''],
+    ['Reach reel','Hard work isn’t working because the problem isn’t outside.','The outer world starts from within.'],
+    ['Sales','Exactly what you get inside Soul Ark Community ($395, lifetime).','Carousel: calls, lives, courses, masterclasses, home feed, brothers, retreats.'],
+    ['Sales','What happens in BRIDGE, week by week.','Bottleneck, Root, Identity, Design, Grounded, Execute.'],
+    ['Sales','Who BRIDGE is for, and who it is not for.','Use the “not for” list. It makes the right man feel chosen.'],
+    ['Sales','Community or BRIDGE: which one is for you?',''],
+    ['Client proof','From stuck to moving: what changed for [client] in 6 weeks.','Fill in a real client story.'],
+    ['Client proof','Testimonial clip with his pain point as the first line.',''],
+    ['My story','I hit rock bottom. This is what changed.','Your own story, in your own words.'],
+    ['My story','I’m the mentor I needed when I was younger.',''],
+    ['My story','Old videos of me vs now.','You have the old videos and stories.'],
+    ['YouTube','Why men who give everything still feel behind (full breakdown).',''],
+    ['YouTube','The 7-day test: find out what’s really stopping you.','The Bottleneck step from BRIDGE.'],
+    ['YouTube','Faith and ambition: you don’t have to choose.',''],
+    ['Story','Rate your week 1 to 10 honestly. Here’s mine.','A poll or slider story. Same tool you use in BRIDGE.'],
+  ].map(([tag, hook, note], i) => ({id:'i' + (i + 1), tag, hook, note, done:false})),
+});
+const normIcp = o => { const d = defaultIcp(), x = {...d, ...(o || {})}; x.lists = {...d.lists, ...(x.lists || {})}; x.chips = Array.isArray(x.chips) ? x.chips : d.chips; x.ideas = Array.isArray(x.ideas) ? x.ideas : d.ideas; return x; };
 const WEEKLY = [['yt','YouTube videos',3,true], ['clip','Clipping session',1,true], ['sales','Sales days (post + stories)',2,false], ['client','Client story',1,false], ['story','Your own story',1,false]];
 const EXP_CATS = ['Bills','Business & software','Marketing','Food','Transport','Personal','Giving','Other'];
 const defaultNonneg = () => [
@@ -459,7 +522,7 @@ let S = loadState();
 
 function blank() {
   return {settings:{...DEFAULT_SETTINGS, offers:DEFAULT_SETTINGS.offers.map(o => ({...o})), goalDeadline:addDays(today(), 90)}, leads:[], clients:[], tasks:[], payments:[], daily:{}, proof:{},
-    expenses:[], bills:[], income:[], identity:DEFAULT_IDENTITY, mission:DEFAULT_MISSION, nonneg:defaultNonneg(), nonnegVersion:3, nonnegDone:{}, schedule:defaultSchedule(), contentLog:{}, weekly:{}, themes:[], scale:defaultScale()};
+    expenses:[], bills:[], income:[], identity:DEFAULT_IDENTITY, mission:DEFAULT_MISSION, nonneg:defaultNonneg(), nonnegVersion:3, nonnegDone:{}, schedule:defaultSchedule(), contentLog:{}, weekly:{}, themes:[], scale:defaultScale(), icp:defaultIcp()};
 }
 function loadState() {
   let raw = null;
@@ -488,7 +551,7 @@ function migrate(o) {
   if ((o.nonnegVersion || 0) >= 2 && (o.nonnegVersion || 0) < 3 && !s.nonneg.some(n => n.auto === 'tiktok')) { // one-time: add the TikTok DMs item next to the DMs item, keeping the rest as he left it
     const i = s.nonneg.findIndex(n => n.auto === 'dms'); s.nonneg.splice(i >= 0 ? i + 1 : s.nonneg.length, 0, {id:uid(), auto:'tiktok', title:'Send 20 TikTok DMs'}); s.nonnegVersion = 3; }
   if (s.nonnegVersion < 3) s.nonnegVersion = 3;
-  s.scale = normScale(o.scale); if (!Array.isArray(s.themes)) s.themes = [];
+  s.scale = normScale(o.scale); s.icp = normIcp(o.icp); if (!Array.isArray(s.themes)) s.themes = [];
   if (s.settings.goalTitle === 'Hit £5K/month with the 6-week mentorship') s.settings.goalTitle = DEFAULT_SETTINGS.goalTitle; // goal is purchases, not £
   s.leads.forEach(l => { l.history = l.history || [{stage:l.stage, date:l.created || today()}]; l.created = l.created || l.history[0].date; });
   if (s.settings.sample && !(o.expenses && o.expenses.length)) { const sm = sampleData(); s.expenses = sm.expenses; s.bills = sm.bills; s.income = sm.income; } // older sample data had no spending
@@ -507,7 +570,7 @@ function save() {
 function sampleData(keep) {
   const t = today(), s = blank();
   s.settings.sample = true;
-  if (keep) { s.settings = {...keep.settings, sample:true}; s.identity = keep.identity; s.mission = keep.mission; s.themes = keep.themes; s.scale = keep.scale; s.nonneg = keep.nonneg; s.schedule = keep.schedule; } // keep the personal bits (goal, identity, non-negotiables)
+  if (keep) { s.settings = {...keep.settings, sample:true}; s.identity = keep.identity; s.mission = keep.mission; s.themes = keep.themes; s.scale = keep.scale; s.icp = keep.icp; s.nonneg = keep.nonneg; s.schedule = keep.schedule; } // keep the personal bits (goal, identity, non-negotiables)
   const hist = (final, createdAgo, lastAgo, lostFrom) => {
     const path = ORDER.slice(0, ORDER.indexOf(final === 'lost' ? lostFrom : final) + 1);
     const span = Math.max(createdAgo - lastAgo, 0);
@@ -645,6 +708,7 @@ function reached(l, sid) {
 /* ================= icons / ui bits ================= */
 const ICON = {
   book:'<path d="M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3z"/><path d="M5 17a3 3 0 013-3h11"/>',
+  target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/>',
   film:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/>',
   home:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
   funnel:'<path d="M3 4h18l-7 8v6l-4 2v-8z"/>',
@@ -679,7 +743,7 @@ function closeModal() {
 }
 
 /* ================= views ================= */
-const NAV = [['today','Today','home'],['content','Content schedule','film'],['scale','Scale Notes','book'],['pipeline','Pipeline','funnel'],['clients','Clients','users'],['tasks','To-do','check'],['revenue','Money','pound'],['proof','Proof Engine','trophy'],['settings','Settings','cog']];
+const NAV = [['today','Today','home'],['content','Content schedule','film'],['scale','Scale Notes','book'],['pipeline','Pipeline','funnel'],['clients','Clients','users'],['tasks','To-do','check'],['revenue','Money','pound'],['proof','Proof Engine','trophy'],['settings','Settings','cog'],['icp','ICP','target']];
 let view = (location.hash || '').replace('#', '') || 'today';
 if (view === 'followups') view = 'pipeline';   // the Follow-ups tab was folded into the Pipeline
 if (!NAV.some(n => n[0] === view)) view = 'today';
@@ -703,7 +767,7 @@ function renderSide() {
 function render() {
   CUR = S.settings.currency || '$';
   renderSide();
-  const fn = {today:vToday, content:vContent, scale:vScale, pipeline:vPipeline, clients:vClients, tasks:vTasks, revenue:vRevenue, proof:vProof, settings:vSettings}[view];
+  const fn = {today:vToday, content:vContent, scale:vScale, icp:vIcp, pipeline:vPipeline, clients:vClients, tasks:vTasks, revenue:vRevenue, proof:vProof, settings:vSettings}[view];
   const banner = S.settings.sample ? `<div class="banner"><span><b>You're looking at sample data</b> — so you can see how everything works.</span><button class="btn sm" data-act="clearSample">Clear it &amp; start fresh</button></div>` : '';
   $('#main').innerHTML = banner + fn();
   restoreDrafts($('#main'));
@@ -1137,6 +1201,55 @@ function themesCard(base, days) {
         <button class="x" data-act="delTheme" data-id="${x.id}" aria-label="Delete">×</button></div>`).join('') : '<div class="empty">Nothing logged for this week yet. Next time someone tells you how they really feel, put it here.</div>'}
     ${ls.length ? `<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm ghost" data-act="copyThemes">Copy this week's themes</button></div>` : ''}
     ${m4.length > 1 && S.themes.length > ls.length ? `<div class="sub" style="margin-top:12px">Last 4 weeks, most common: ${m4.slice(0, 4).map(([e, n]) => `${esc(e)} (${n})`).join(' · ')}</div>` : ''}</div>`;
+}
+let icpEditing = '', icpTag = 'All';
+const icpAvatar = () => `<svg viewBox="0 0 200 200" width="150" height="150" role="img" aria-label="Avatar of the ideal client" style="flex:none">
+  <defs><linearGradient id="avg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#25305e"/><stop offset="1" stop-color="#101834"/></linearGradient><clipPath id="avc"><circle cx="100" cy="100" r="92"/></clipPath></defs>
+  <circle cx="100" cy="100" r="96" fill="none" stroke="#CAA31C" stroke-width="3"/><circle cx="100" cy="100" r="92" fill="url(#avg)"/>
+  <g clip-path="url(#avc)"><path d="M18 200c4-48 34-70 82-70s78 22 82 70z" fill="#33407a"/><path d="M78 124l22 26 22-26" fill="none" stroke="#CAA31C" stroke-width="3" opacity=".8"/>
+  <rect x="86" y="108" width="28" height="26" rx="10" fill="#d9b48f"/><ellipse cx="100" cy="82" rx="30" ry="34" fill="#e3bf9b"/>
+  <path d="M69 78c-2-28 16-42 33-41 20 1 30 16 28 38-6-12-14-18-30-18-14 0-26 6-31 21z" fill="#2a2018"/>
+  <path d="M86 92q4 3 8 0M106 92q4 3 8 0" stroke="#2a2018" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M92 107q8 4 16 0" stroke="#7a5a44" stroke-width="2.4" fill="none" stroke-linecap="round"/></g></svg>`;
+function icpText() {
+  const I = S.icp, L = I.lists, sec = k => (L[k] || []).map(x => '- ' + x).join('\n');
+  return `MY IDEAL CLIENT (ICP): ${I.name}, ${I.age}. ${I.tag}\nTraits: ${I.chips.join(', ')}\n\nIn his own words:\n${sec('words')}\n\nPain points:\n${sec('pains')}\n\nFears:\n${sec('fears')}\n\nStories he tells himself:\n${sec('stories')}\n\nBeliefs:\n${sec('beliefs')}\n\nHow he sees the world:\n${sec('world')}\n\nWhat he wants:\n${sec('desires')}\n\nBefore:\n${sec('before')}\n\nAfter:\n${sec('after')}\n\nNot for:\n${sec('notfor')}\n\nMy offers: Soul Ark Community ($395 lifetime) and BRIDGE Mentorship ($995, 6 weeks one-to-one).\n\nPlease give me 10 new reel hooks, 3 YouTube titles and 3 story ideas that speak to him directly, in his own words, in a direct, honest, faith-led voice.`;
+}
+function icpCard([k, title, sub, kind]) {
+  const items = S.icp.lists[k] || [], editing = icpEditing === k;
+  return `<div class="card"><h2><span>${title}</span><button class="btn sm ghost" data-act="icpEdit" data-k="${k}">${editing ? 'Done' : 'Edit'}</button></h2>${sub ? `<div class="sub">${sub}</div>` : ''}
+    ${editing ? `<textarea data-icp="${k}" style="min-height:190px;margin-top:8px" aria-label="${title}, one per line">${esc(items.join('\n'))}</textarea><div class="sub" style="margin-top:4px">One per line.</div>`
+      : kind === 'quote' ? items.map(x => `<div class="iq">${esc(x)}</div>`).join('') || '<div class="empty">Nothing here yet.</div>'
+      : items.length ? `<ul class="blist">${items.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '<div class="empty">Nothing here yet.</div>'}</div>`;
+}
+function vIcp() {
+  const I = S.icp, wk = tally(weekThemes(weekStart(today()))), ideas = I.ideas.filter(x => icpTag === 'All' || x.tag === icpTag);
+  const sec = k => ICP_SECTIONS.find(x => x[0] === k);
+  return `<div class="top"><div><h1>ICP</h1><p>The man you are talking to in everything you post. Drafted from your own answers. Edit anything.</p></div>
+    <div class="acts"><button class="btn ghost" data-act="icpCopy">Copy ICP for Claude</button></div></div>
+  <div class="card ident" style="margin-bottom:16px"><div class="persona">${icpAvatar()}<div>
+    <div class="sub" style="font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:12px">Your ideal client</div>
+    <h2 style="margin:2px 0;font-size:24px">${esc(I.name)}, ${esc(I.age)} <button class="btn sm ghost" data-act="icpPersona" style="margin-left:8px;font-size:12px">Edit</button></h2>
+    <div class="ptag">${esc(I.tag)}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;justify-content:inherit">${I.chips.map(c => `<span class="chip" style="font-size:12.5px;padding:4px 10px">${esc(c)}</span>`).join('')}</div>
+    <div class="sub" style="color:var(--text);line-height:1.6">He is you, earlier. You said you are the mentor you needed when you were younger. The name is only a placeholder.</div></div></div></div>
+  ${wk.length ? `<div class="chase-bar ok" style="margin-bottom:16px;flex-direction:column;align-items:flex-start;gap:6px"><span style="color:var(--text);font-weight:600">What men told you this week</span><span>${wk.slice(0, 5).map(([e, n]) => `${esc(e)} (${n})`).join(' · ')}. Logged in Content schedule, Common themes.</span></div>` : ''}
+  <div class="cgrid">${['words', 'pains', 'fears', 'stories', 'beliefs', 'world', 'desires'].map(k => icpCard(sec(k))).join('')}</div>
+  <div class="cgrid" style="margin-top:16px">${['before', 'after'].map(k => icpCard(sec(k))).join('')}${['notfor', 'learn'].map(k => icpCard(sec(k))).join('')}</div>
+  <div class="card" style="margin-top:16px"><h2>Content ideas for him <small>${ideas.length} idea${ideas.length === 1 ? '' : 's'}${icpTag === 'All' ? '' : ' · ' + icpTag}</small></h2>
+    <div class="sub" style="margin-bottom:10px">Every idea speaks to a pain point above. Tap Copy to grab the hook. Tick Made when it is posted.</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">${['All', ...ICP_TAGS].map(t => `<button class="wkp ${icpTag === t ? 'on' : ''}" data-act="icpTag" data-t="${t}" style="min-width:0;padding:6px 12px;flex-direction:row">${t}</button>`).join('')}</div>
+    <form data-form="icpidea" class="inline" style="flex-wrap:wrap;gap:8px;margin-bottom:8px"><select name="tag" aria-label="Type" style="flex:none;width:auto">${ICP_TAGS.map(t => `<option>${t}</option>`).join('')}</select><input name="hook" placeholder="Add your own idea or hook…" required style="flex:1;min-width:220px"><button class="btn sm">Add</button></form>
+    ${ideas.map(x => `<div class="row idea"><div class="grow"><span class="chip">${x.tag}</span><div class="hook" style="margin-top:4px">${esc(x.hook)}</div>${x.note ? `<div class="sub">${esc(x.note)}</div>` : ''}</div>
+      <button class="btn sm ${x.done ? 'good' : 'ghost'}" data-act="icpMade" data-id="${x.id}">${x.done ? '✓ Made' : 'Made'}</button><button class="btn sm ghost" data-act="icpHook" data-id="${x.id}">Copy</button><button class="x" data-act="icpDel" data-id="${x.id}" aria-label="Delete">×</button></div>`).join('') || '<div class="empty">No ideas in this group yet.</div>'}
+    </div>`;
+}
+function icpForm() {
+  const I = S.icp;
+  modal('Edit your ideal client', `<form data-form="icp">
+    <div class="two">${fld('Name (placeholder)', 'name', I.name, 'text', 'required')}${fld('Age', 'age', I.age)}</div>
+    ${fld('The line that sums him up', 'tag', I.tag, 'text', 'required')}
+    <label class="fld"><span>Traits (one per line)</span><textarea name="chips" style="min-height:120px">${esc(I.chips.join('\n'))}</textarea></label>
+    <div class="mfoot"><button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save</button></div></form>`);
 }
 function vContent() {
   const t = today(), base = addDays(weekStart(t), contentWeek * 7), days = [...Array(7)].map((_, i) => addDays(base, i));
@@ -1658,6 +1771,13 @@ document.addEventListener('click', e => {
       try { localStorage.setItem(AI_KEY, v.trim()); } catch (e) { toast('Could not save the key in this browser'); break; } render(); toast('Key saved. Press Test connection to check it'); break; }
     case 'aiRemoveKey': try { localStorage.removeItem(AI_KEY); } catch (e) {} aiState = {}; render(); toast('Key removed'); break;
     case 'aiTest': { toast('Testing…'); claudeCall('Reply with the single word OK.', 'Test', 10).then(() => toast('Connected ✓ Claude is ready'), e => toast(e.message)); break; }
+    case 'icpEdit': icpEditing = icpEditing === el.dataset.k ? '' : el.dataset.k; render(); break;
+    case 'icpTag': icpTag = el.dataset.t; render(); break;
+    case 'icpPersona': icpForm(); break;
+    case 'icpMade': { const x = S.icp.ideas.find(y => y.id === id); if (x) { x.done = !x.done; save(); render(); } break; }
+    case 'icpDel': S.icp.ideas = S.icp.ideas.filter(x => x.id !== id); save(); render(); break;
+    case 'icpHook': { const x = S.icp.ideas.find(y => y.id === id); if (x) (navigator.clipboard?.writeText(x.hook) || Promise.reject()).then(() => toast('Hook copied'), () => toast('Copy blocked by the browser')); break; }
+    case 'icpCopy': (navigator.clipboard?.writeText(icpText()) || Promise.reject()).then(() => toast('Copied. Paste it to Claude for more ideas'), () => toast('Copy blocked by the browser')); break;
     case 'scalePillar': scalePillar = el.dataset.p; saveUI(); render(); break;
     case 'ladScore': { const l = S.scale.ladder[el.dataset.p], k = el.dataset.k, n = +el.dataset.n; l.sc[k] = l.sc[k] === n ? 0 : n; save(); render(); break; }
     case 'ladAdd': { const pl = PILLARS.find(x => x.id === el.dataset.p), txt = (S.scale.ladder[pl.id].biz || '').trim(); if (!txt) { toast('Write the action first'); break; }
@@ -1679,7 +1799,7 @@ document.addEventListener('click', e => {
     case 'scripts': modal('Message scripts <small style="color:var(--muted);font-weight:500">tap to copy</small>', TEMPLATES.map(([name, txt], i) => `<div class="tmpl"><b>${name}</b><p>${esc(txt)}</p><button class="btn sm ghost" data-act="copyTmpl" data-i="${i}">Copy</button></div>`).join('')); break;
     case 'copyTmpl': { const txt = TEMPLATES[+el.dataset.i][1].replace(/\{name\}/g, '[name]'); (navigator.clipboard?.writeText(txt) || Promise.reject()).then(() => toast('Copied — swap [name] for theirs'), () => toast('Copy blocked by browser — select the text instead')); break; }
     case 'clearSample': if (confirm('Delete all sample data and start with a blank dashboard? (Your goal, identity statement and non-negotiables are kept.)')) {
-      const n = blank(); n.settings = {...S.settings, sample:false}; n.identity = S.identity; n.mission = S.mission; n.themes = S.themes; n.scale = S.scale; n.nonneg = S.nonneg; n.schedule = S.schedule; S = n; save(); render(); toast('Fresh start. Add your first lead!'); } break;
+      const n = blank(); n.settings = {...S.settings, sample:false}; n.identity = S.identity; n.mission = S.mission; n.themes = S.themes; n.scale = S.scale; n.icp = S.icp; n.nonneg = S.nonneg; n.schedule = S.schedule; S = n; save(); render(); toast('Fresh start. Add your first lead!'); } break;
     case 'loadSample': if (confirm('Replace everything with sample data? (Your goal, identity statement and non-negotiables are kept.)')) { S = sampleData(S); save(); render(); } break;
     case 'wipe': if (confirm('Delete ALL your data? Export a backup first if you are unsure. This cannot be undone.')) { S = blank(); save(); render(); toast('Everything deleted'); } break;
     case 'export': {
@@ -1706,6 +1826,10 @@ document.addEventListener('submit', e => {
       S.leads.push({id:uid(), name:f.name.trim(), handle:f.handle.trim(), source:f.source, stage:f.stage, offer:f.offer || '', value:+f.value || 0, lastContact:f.lastContact || t, nextFollowUp:f.nextFollowUp, notes:f.notes, created:t, history:[{stage:f.stage, date:t}]});
       save(); closeModal(); render(); toast('Lead added');
     }
+  } else if (kind === 'icpidea') {
+    S.icp.ideas.unshift({id:uid(), tag:f.tag, hook:f.hook.trim(), note:'', done:false}); save(); render(); toast('Idea added');
+  } else if (kind === 'icp') {
+    Object.assign(S.icp, {name:f.name.trim(), age:(f.age || '').trim(), tag:f.tag.trim(), chips:(f.chips || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean)}); save(); closeModal(); render();
   } else if (kind === 'scalenote') {
     S.scale.entries.push({id:uid(), week:scaleWk(), date:t, type:'note', pillar:'', text:f.text.trim(), star:false});
     save(); render(); toast('Added to week ' + scaleWk());
@@ -1810,7 +1934,7 @@ function restoreDrafts(root) {
   });
 }
 /* remember which pop-up is open, so a refresh reopens it with your text still in it */
-['leadForm','scaleEditForm','clientForm','payForm','expenseForm','billForm','goalForm','incomeForm','identityForm','missionForm','dayForm','winForm','lostForm'].forEach(name => {
+['leadForm','scaleEditForm','icpForm','clientForm','payForm','expenseForm','billForm','goalForm','incomeForm','identityForm','missionForm','dayForm','winForm','lostForm'].forEach(name => {
   const orig = window[name];
   window[name] = function (id) { drafts.__modal = {name, id}; saveDrafts(); return orig(id); };
 });
@@ -1853,7 +1977,8 @@ document.addEventListener('change', e => {
 
 document.addEventListener('input', e => {   // Scale Notes boxes save as you type
   const d = e.target.dataset; if (!d) return;
-  if (d.uq) { const [pp, kk] = d.uq.split(':'); const lw = S.scale.ladder[pp]; lw.uq[kk] = e.target.value; lw.understand = composeUnderstand(pp); const cc = document.getElementById('uqc-' + pp); if (cc) cc.textContent = uqCount(pp); save(); }
+  if (d.icp) { S.icp.lists[d.icp] = e.target.value.split(/\r?\n/).map(x => x.trim()).filter(Boolean); save(); }
+  else if (d.uq) { const [pp, kk] = d.uq.split(':'); const lw = S.scale.ladder[pp]; lw.uq[kk] = e.target.value; lw.understand = composeUnderstand(pp); const cc = document.getElementById('uqc-' + pp); if (cc) cc.textContent = uqCount(pp); save(); }
   else if (d.ufree) { const lw = S.scale.ladder[d.ufree]; lw.ufree = e.target.value; lw.understand = composeUnderstand(d.ufree); save(); }
   else if (d.aiq) { const [pp, ii] = d.aiq.split(':'); const st = aiState[pp] = aiState[pp] || {}; st.ans = st.ans || []; st.ans[+ii] = e.target.value; }
   else if (d.imp) { drafts.__imp = drafts.__imp || {}; drafts.__imp[d.imp] = e.target.value; saveDrafts(); }
