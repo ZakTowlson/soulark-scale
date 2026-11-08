@@ -431,7 +431,7 @@ const uqCount = pid => { const l = S.scale.ladder[pid]; return `${(U_QS[pid] || 
 const composeUnderstand = pid => { const l = S.scale.ladder[pid], parts = (U_QS[pid] || []).filter(q => (l.uq[q[0]] || '').trim()).map(q => `${q[1]}\n${l.uq[q[0]].trim()}`);
   if ((l.ufree || '').trim()) parts.push(`In my own words:\n${l.ufree.trim()}`); return parts.join('\n\n'); };
 const RUNGS = ['understand', 'value', 'believe', 'know', 'act'];
-const blankLadder = () => ({uq:{}, ufree:'', understand:'', value:'', believe:'', know:'', act:'', change:'', biz:'', sc:{understand:0, value:0, believe:0, know:0, act:0}});
+const blankLadder = () => ({uq:{}, ufree:'', understand:'', value:'', believe:'', know:'', act:'', change:'', biz:'', take:'', sc:{understand:0, value:0, believe:0, know:0, act:0}});
 const defaultScale = () => ({start:'2026-11-09', entries:[], weeks:{}, ladder:Object.fromEntries(PILLARS.map(p => [p.id, blankLadder()])), answers:Object.fromEntries(PILLARS.map(p => [p.id, p.qs.map(() => '')])), playbook:Object.fromEntries(PILLARS.map(p => [p.id, '']))});
 const normScale = o => { const d = defaultScale(), x = {...d, ...(o || {})};
   x.answers = {...d.answers, ...(x.answers || {})}; PILLARS.forEach(p => { x.answers[p.id] = p.qs.map((_, i) => (x.answers[p.id] || [])[i] || ''); });
@@ -934,6 +934,7 @@ Please draft the other steps for me, in the first person, in my own words, short
 - act: ${r.act[1]}
 - change: What needs to change so this works in my favour?
 - business: ${me ? 'How will fixing this show up in my business?' : 'What will I do about it in the next 7 days? One clear action.'}
+- takeaways: 4 to 6 short bullet points (each line starting with "- ") with the main takeaways and lessons from everything above.
 
 Reply in EXACTLY this format and nothing else, so I can paste it straight into my dashboard:
 [VALUE] ...
@@ -941,7 +942,9 @@ Reply in EXACTLY this format and nothing else, so I can paste it straight into m
 [KNOW] ...
 [ACT] ...
 [CHANGE] ...
-[BUSINESS] ...${auto ? (qa ? `
+[BUSINESS] ...
+[TAKEAWAYS]
+- ...${auto ? (qa ? `
 
 Here are my answers to your questions:
 ${qa.map(x => `- ${x.q} ${x.a}`).join('\n') || '(no extra answers)'}
@@ -952,8 +955,8 @@ If my answer is too thin to draft honestly, reply with ONLY [QUESTIONS] on its o
 function parseLadderImport(txt) {
   const out = {}; let cur = null;
   txt.split(/\r?\n/).forEach(line => {
-    const clean = line.replace(/[*`#]/g, '').trim(), m = clean.match(/^\[\s*(UNDERSTAND|VALUE|BELIEVE|BELIEF|KNOW[ -]?HOW|KNOW|ACT|ACTION|CHANGE|BUSINESS)\s*\]\s*:?\s*(.*)$/i);
-    if (m) { const k = m[1].toUpperCase().replace(/[ -]/g, ''); cur = {UNDERSTAND:'understand', VALUE:'value', BELIEVE:'believe', BELIEF:'believe', KNOWHOW:'know', KNOW:'know', ACT:'act', ACTION:'act', CHANGE:'change', BUSINESS:'biz'}[k]; out[cur] = m[2]; }
+    const clean = line.replace(/[*`#]/g, '').trim(), m = clean.match(/^\[\s*(UNDERSTAND|VALUE|BELIEVE|BELIEF|KNOW[ -]?HOW|KNOW|ACT|ACTION|CHANGE|BUSINESS|TAKEAWAYS?|LESSONS|SUMMARY)\s*\]\s*:?\s*(.*)$/i);
+    if (m) { const k = m[1].toUpperCase().replace(/[ -]/g, ''); cur = {UNDERSTAND:'understand', VALUE:'value', BELIEVE:'believe', BELIEF:'believe', KNOWHOW:'know', KNOW:'know', ACT:'act', ACTION:'act', CHANGE:'change', BUSINESS:'biz', TAKEAWAYS:'take', TAKEAWAY:'take', LESSONS:'take', SUMMARY:'take'}[k]; out[cur] = m[2]; }
     else if (cur) out[cur] += '\n' + line.trim();
   });
   Object.keys(out).forEach(k => { out[k] = out[k].trim(); if (!out[k]) delete out[k]; });
@@ -1023,8 +1026,8 @@ const stepOneBox = p => { const l = S.scale.ladder[p.id], r = rungPrompts(p), st
     <textarea id="imp-${p.id}" data-imp="${p.id}" placeholder="Paste Claude's reply here (the part that starts with [VALUE])…" style="min-height:80px">${esc((drafts.__imp || {})[p.id] || '')}</textarea>
     <div style="margin-top:8px"><button class="btn sm ghost" data-act="ladFill" data-p="${p.id}">Fill the boxes</button></div></details></div>`; };
 function ladderText() {
-  const out = PILLARS.map(p => { const l = S.scale.ladder[p.id], r = rungPrompts(p), has = RUNGS.some(k => l[k] || l.sc[k]) || l.change || l.biz; if (!has) return '';
-    return `## ${p.name} (${p.tag})\n` + RUNGS.map(k => (l[k] || l.sc[k]) ? `${r[k][0]}${l.sc[k] ? ` [${l.sc[k]}/10]` : ''}: ${l[k] || '(no answer)'}` : '').filter(Boolean).join('\n') + (l.change ? `\nWhat needs to change: ${l.change}` : '') + (l.biz ? `\nHow I will reflect it in the business: ${l.biz}` : ''); }).filter(Boolean);
+  const out = PILLARS.map(p => { const l = S.scale.ladder[p.id], r = rungPrompts(p), has = RUNGS.some(k => l[k] || l.sc[k]) || l.change || l.biz || l.take; if (!has) return '';
+    return `## ${p.name} (${p.tag})\n` + RUNGS.map(k => (l[k] || l.sc[k]) ? `${r[k][0]}${l.sc[k] ? ` [${l.sc[k]}/10]` : ''}: ${l[k] || '(no answer)'}` : '').filter(Boolean).join('\n') + (l.change ? `\nWhat needs to change: ${l.change}` : '') + (l.biz ? `\nHow I will reflect it in the business: ${l.biz}` : '') + (l.take ? `\nMain takeaways:\n${l.take}` : ''); }).filter(Boolean);
   return out.length ? `\n\nTHE LADDER (understand, value, belief, know-how, action; scores 1-10 where 10 is strong)\n${out.join('\n\n')}` : '';
 }
 function scaleAllText() {
@@ -1037,7 +1040,8 @@ function scaleAllText() {
 function playbookText() {
   const loose = S.scale.entries.filter(e => e.star && !PILLARS.some(p => p.id === e.pillar));
   return '# Soul Ark Scale: playbook draft\n\n' + (loose.length ? '## Starred notes (not sorted into a pillar yet)\n' + loose.map(e => `- ${e.text} (week ${e.week})`).join('\n') + '\n\n' : '') + PILLARS.map(p => { const st = S.scale.entries.filter(e => e.pillar === p.id && e.star), own = (S.scale.playbook[p.id] || '').trim();
-    return `## ${p.name}: ${p.tag}\n` + (own ? own + '\n' : '') + (st.length ? st.map(e => `- ${e.text} (week ${e.week})`).join('\n') : (own ? '' : '(nothing yet)')); }).join('\n\n');
+    const tk = (S.scale.ladder[p.id].take || '').trim();
+    return `## ${p.name}: ${p.tag}\n` + (tk ? tk + '\n' : '') + (own ? own + '\n' : '') + (st.length ? st.map(e => `- ${e.text} (week ${e.week})`).join('\n') : (own || tk ? '' : '(nothing yet)')); }).join('\n\n');
 }
 function vScale() {
   const t = today(), n = scaleWk(), d0 = diff(t, S.scale.start), es = S.scale.entries;
@@ -1061,6 +1065,7 @@ function vScale() {
       <div class="cgrid" style="margin-top:14px"><div class="qa"><label for="l-${p.id}-change" style="margin-top:0">What needs to change?</label><div class="sub" style="margin-bottom:6px">${p.id === 'self' ? 'Looking at the weakest step above, what has to change in me?' : 'Looking at the weakest step above, what has to change here?'}</div><textarea id="l-${p.id}-change" data-lad="${p.id}:change" placeholder="Your answer…">${esc(l.change)}</textarea></div>
         <div class="qa"><label for="l-${p.id}-biz" style="margin-top:0">${p.id === 'self' ? 'How will that show up in the business?' : 'What will I do about it in the next 7 days?'}</label><div class="sub" style="margin-bottom:6px">${p.id === 'self' ? 'Mirror it: how does fixing this in me change what I do in marketing, product and sales?' : 'One clear action, then it goes in your journal.'}</div><textarea id="l-${p.id}-biz" data-lad="${p.id}:biz" placeholder="Your answer…">${esc(l.biz)}</textarea>
           <div style="margin-top:8px"><button class="btn sm ghost" data-act="ladAdd" data-p="${p.id}">Add to week ${scaleWk()} journal</button></div></div></div>
+      <div class="qa" style="margin-top:16px"><label for="l-${p.id}-take" style="margin-top:0">Main takeaways and lessons</label><div class="sub" style="margin-bottom:6px">The key points from everything above, as bullet points. Claude drafts these too, or write your own.</div><textarea id="l-${p.id}-take" data-lad="${p.id}:take" placeholder="- ..." style="min-height:150px;font-size:14.5px;line-height:1.6">${esc(l.take || '')}</textarea></div>
       ${old.length ? `<details style="margin-top:16px"><summary class="sub" style="cursor:pointer">Your earlier answers for ${p.name} (${old.length})</summary>${old.map(([q, a]) => `<div style="margin-top:10px"><div class="sub">${esc(q)}</div><div class="snote">${esc(a)}</div></div>`).join('')}</details>` : ''}</div>`;
   }
   if (scaleTab === 'playbook') { const starred = es.filter(e => e.star).length;
@@ -1070,6 +1075,7 @@ function vScale() {
       <div class="cgrid">${PILLARS.map(p => { const st = es.filter(e => e.pillar === p.id && e.star);
         return `<div class="card qa"><h2><span>${p.name} <span class="sub">· ${p.tag}</span></span>${p.focus ? '<span class="chip warn">Focus now</span>' : ''}</h2>
           ${st.length ? st.map(e => `<div class="row"><div class="grow"><div class="snote" style="margin:0">${esc(e.text)}</div><div class="sub">Week ${e.week} · ${tName(e.type)}</div></div><button class="btn sm good" data-act="sStar" data-id="${e.id}" title="Un-star">★</button></div>`).join('') : '<div class="sub">Star notes in the Journal and they collect here.</div>'}
+          ${(S.scale.ladder[p.id].take || '').trim() ? `<div class="sub" style="margin-top:10px"><b style="color:var(--text)">From the pillar work</b></div><div class="snote">${esc(S.scale.ladder[p.id].take)}</div>` : ''}
           <label for="pb-${p.id}">Playbook bullets (polished)</label><textarea id="pb-${p.id}" data-spb="${p.id}" placeholder="Bullet points for clients…" style="min-height:110px">${esc(S.scale.playbook[p.id])}</textarea></div>`; }).join('')}</div>`; }
   /* journal */
   const w = S.scale.weeks[n] || {}, wes = es.filter(e => e.week === n), cw = curScaleWeek();
