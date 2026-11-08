@@ -381,8 +381,8 @@ const PILLARS = [
   {id:'ecosystem', def:'How everything connects: the path a person walks from stranger to follower to member to client to advocate, and the environment that keeps them moving and staying.', inc:'Content, free community, webinar, offers, client journey, referrals, where people drop off.', subject:'how everything connects', name:'Ecosystem', tag:'How it all connects', mirror:'Belief grows in the right environment.', qs:['What are the parts (content, community, webinar, offers, clients) and how do they connect?','Where does someone go after each step? Where do they drop off?','What makes people stay and refer others?','What is missing?']},
   {id:'systems', def:'The routines, tracking and reviews that make results repeatable without relying on motivation: what happens every day, what gets measured and how you review it.', inc:'Non-negotiables, this dashboard, weekly review, scripts, what can be automated or handed off.', subject:'my daily systems', name:'Systems', tag:'The discipline', mirror:'What you repeat is what you become.', qs:['What must happen every day, no matter what?','What do I track, and what does it tell me?','How do I review each week?','What can be automated or handed off?']},
 ];
-const RUNGS = ['understand', 'value', 'believe', 'act'];
-const blankLadder = () => ({understand:'', value:'', believe:'', act:'', change:'', biz:'', sc:{understand:0, value:0, believe:0, act:0}});
+const RUNGS = ['understand', 'value', 'believe', 'know', 'act'];
+const blankLadder = () => ({understand:'', value:'', believe:'', know:'', act:'', change:'', biz:'', sc:{understand:0, value:0, believe:0, know:0, act:0}});
 const defaultScale = () => ({start:'2026-11-09', entries:[], weeks:{}, ladder:Object.fromEntries(PILLARS.map(p => [p.id, blankLadder()])), answers:Object.fromEntries(PILLARS.map(p => [p.id, p.qs.map(() => '')])), playbook:Object.fromEntries(PILLARS.map(p => [p.id, '']))});
 const normScale = o => { const d = defaultScale(), x = {...d, ...(o || {})};
   x.answers = {...d.answers, ...(x.answers || {})}; PILLARS.forEach(p => { x.answers[p.id] = p.qs.map((_, i) => (x.answers[p.id] || [])[i] || ''); });
@@ -843,22 +843,24 @@ const pName = id => (PILLARS.find(p => p.id === id) || {name:id}).name;
 const tName = id => (SCALE_TYPES.find(t => t[0] === id) || ['', id])[1];
 const ladder = (a, end) => `<div class="lad">${a.map(x => `<span class="st">${x}</span><span class="ar">→</span>`).join('')}<span class="st end">${end}</span></div>`;
 const SCALE_PRINCIPLE = `<div class="card ident" style="margin-bottom:16px"><h2>The principle <small>the whole programme in two lines</small></h2>
-  <div class="sub" style="margin-bottom:2px">A person</div>${ladder(['Understands themselves', 'More intrinsic value', 'More belief in themselves'], 'More willing to act')}
-  <div class="sub" style="margin-bottom:2px">A product or service</div>${ladder(['The client understands it', 'More perceived value', 'More belief it can help them'], 'More likely to buy')}
+  <div class="sub" style="margin-bottom:2px">A person</div>${ladder(['Understands themselves', 'More intrinsic value', 'More belief in themselves', 'Knows what to do'], 'More willing to act')}
+  <div class="sub" style="margin-bottom:2px">A product or service</div>${ladder(['The client understands it', 'More perceived value', 'More belief it can help them', 'Knows how it works'], 'More likely to buy')}
   <div class="sub" style="color:var(--text);line-height:1.6">Scale is reflecting a person's inner workings onto the world of business. The business is a mirror of the founder, so each pillar below has a mirror in you.</div></div>`;
-const RUNG_NAME = {understand:'Understanding', value:'Value', believe:'Belief', act:'Action'};
+const RUNG_NAME = {understand:'Understanding', value:'Value', believe:'Belief', know:'Know-how', act:'Action'};
 function rungPrompts(p) {
   const me = p.id === 'self', sub = p.subject;
   return me ? {
     understand:['1 · Understand', 'What do I honestly understand about myself? My strengths, my patterns, what drives me, what holds me back.'],
     value:['2 · Intrinsic value', 'What does that mean for my value? Where do I undervalue myself, and where am I fully standing in it?'],
     believe:['3 · Belief', 'What does that make me believe about myself, about selling and about asking for money?'],
-    act:['4 · Willing to act', 'How willing am I to act because of it? What do I do, and what do I avoid?']
+    know:['4 · Know how', 'Do I know what to do when the old pattern starts? What is my method? Finish it: "When I notice ___, I will ___."'],
+    act:['5 · Willing to act', 'How willing am I to act because of it? What do I do, and what do I avoid?']
   } : {
     understand:['1 · Understand', `How clearly do I understand ${sub}, and how clearly can my audience understand it?`],
     value:['2 · Perceived value', 'What does that mean for how much it is worth in their eyes? Do they see it?'],
     believe:['3 · Belief', 'Do they believe it can help them? Why, or why not?'],
-    act:['4 · Likely to act', 'What does that make them do, or not do? (reply, join, book, buy, share)']
+    know:['4 · Know how', 'Is the method clear? Do they know exactly how it gets them the result, and what to do next?'],
+    act:['5 · Likely to act', 'What does that make them do, or not do? (reply, join, book, buy, share)']
   };
 }
 const weakest = id => { const sc = S.scale.ladder[id].sc, r = RUNGS.filter(k => sc[k] > 0).sort((a, b) => sc[a] - sc[b])[0]; return r ? {k:r, n:sc[r]} : null; };
@@ -870,7 +872,7 @@ function scaleWeekText(n) {
 function ladderText() {
   const out = PILLARS.map(p => { const l = S.scale.ladder[p.id], r = rungPrompts(p), has = RUNGS.some(k => l[k] || l.sc[k]) || l.change || l.biz; if (!has) return '';
     return `## ${p.name} (${p.tag})\n` + RUNGS.map(k => (l[k] || l.sc[k]) ? `${r[k][0]}${l.sc[k] ? ` [${l.sc[k]}/10]` : ''}: ${l[k] || '(no answer)'}` : '').filter(Boolean).join('\n') + (l.change ? `\nWhat needs to change: ${l.change}` : '') + (l.biz ? `\nHow I will reflect it in the business: ${l.biz}` : ''); }).filter(Boolean);
-  return out.length ? `\n\nTHE LADDER (understand, value, belief, action; scores 1-10 where 10 is strong)\n${out.join('\n\n')}` : '';
+  return out.length ? `\n\nTHE LADDER (understand, value, belief, know-how, action; scores 1-10 where 10 is strong)\n${out.join('\n\n')}` : '';
 }
 function scaleAllText() {
   const weeks = [...Array(8)].map((_, i) => i + 1).filter(n => S.scale.entries.some(e => e.week === n) || (S.scale.weeks[n] || {}).line || (S.scale.weeks[n] || {}).next);
@@ -892,8 +894,8 @@ function vScale() {
   if (scaleTab === 'pillars') {
     const p = PILLARS.find(x => x.id === scalePillar) || PILLARS[0], l = S.scale.ladder[p.id], r = rungPrompts(p), old = S.scale.answers[p.id].map((a, i) => a ? [p.qs[i], a] : null).filter(Boolean);
     const all = PILLARS.map(q => ({q, w:weakest(q.id)})), worst = all.filter(x => x.w).sort((a, b) => a.w.n - b.w.n)[0];
-    const lad = p.id === 'self' ? ladder(['Understand myself', 'Intrinsic value', 'Belief in myself'], 'Willing to act') : ladder(['They understand it', 'Perceived value', 'Belief it can help'], 'Likely to act');
-    return head + SCALE_PRINCIPLE + `<div class="sub" style="margin:-4px 0 12px">Work down the ladder for yourself first (Self), then ask the same questions of the business. Score each step 1 to 10 (10 = strong). The lowest score is where to work first.</div>
+    const lad = p.id === 'self' ? ladder(['Understand myself', 'Intrinsic value', 'Belief in myself', 'Know how'], 'Willing to act') : ladder(['They understand it', 'Perceived value', 'Belief it can help', 'Know how it works'], 'Likely to act');
+    return head + SCALE_PRINCIPLE + `<div class="sub" style="margin:-4px 0 12px">Work down the five steps for yourself first (Self), then ask the same questions of the business. Score each step 1 to 10 (10 = strong). The lowest score is where to work first.</div>
     ${worst ? `<div class="chase-bar ok" style="margin-bottom:12px">Weakest step so far: <b style="color:var(--text)">${worst.q.name} · ${RUNG_NAME[worst.w.k]} · ${worst.w.n}/10</b></div>` : ''}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">${all.map(({q, w}) => `<button class="wkp ${q.id === p.id ? 'on' : ''}" data-act="scalePillar" data-p="${q.id}" style="min-width:110px">${q.name}<small>${w ? RUNG_NAME[w.k] + ' ' + w.n + '/10' : q.focus ? 'Focus now' : 'not started'}</small></button>`).join('')}</div>
     <div class="card"><h2><span>${p.name} <span class="sub">· ${p.tag}</span></span>${p.focus ? '<span class="chip warn">Focus now</span>' : ''}</h2>
