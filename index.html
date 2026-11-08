@@ -198,6 +198,7 @@ td.r,th.r{text-align:right}
 .idtext.fold{max-height:calc(1.7em * 3);overflow:hidden;position:relative;-webkit-mask-image:linear-gradient(#000 55%,transparent);mask-image:linear-gradient(#000 55%,transparent)}
 .hbtns{display:flex;gap:6px;align-items:center}
 .fbtn{min-width:34px}
+.ident h2,.mission h2{flex-wrap:wrap;gap:8px}
 .mission{border-color:var(--line2);background:linear-gradient(135deg,rgba(255,255,255,.04),rgba(202,163,28,.08))}
 .crow{display:grid;grid-template-columns:110px 1fr auto;gap:14px;align-items:center;padding:14px 16px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;background:var(--panel2)}
 .crow.today{border-color:var(--gold);background:rgba(202,163,28,.08)}
@@ -318,7 +319,7 @@ const ORDER = ['dm','convo','booked','decide','won'];
 const OPEN = ['dm','convo','booked','decide'];
 const stageLabel = id => STAGES.find(s => s.id === id)?.label || id;
 const prob = id => STAGES.find(s => s.id === id)?.p || 0;
-const SOURCES = ['Instagram DM','WhatsApp','YouTube','Webinar','Circle community','Referral','Other'];
+const SOURCES = ['Instagram DM','TikTok DM','WhatsApp','YouTube','Webinar','Circle community','Referral','Other'];
 const CATS = ['Client','Community','Content','Admin','Self'];
 const CAT_RENAME = {Sales:'Client', Clients:'Client', Build:'Admin'}; // old category names → new ones
 const PRI_COL = {high:'var(--bad)', med:'var(--warn)', low:'var(--dim)'};
@@ -334,7 +335,7 @@ const TEMPLATES = [
 const DEFAULT_SETTINGS = {
   bizName:'Soul Ark Scale', ownerName:'Zak', target:5000, offerPrice:995, currency:'$', staleDays:3, gap:3,
   offers:[{id:'community', name:'Soul Ark Community', price:395}, {id:'bridge', name:'BRIDGE Mentorship', price:995}],
-  dmTarget:20, convoTarget:5, callTarget:1, contentTarget:1,
+  dmTarget:20, ttTarget:20, convoTarget:5, callTarget:1, contentTarget:1,
   nextOffer:'Scale Mentorship for Coaches', sample:false,
   goalTitle:'Hit 50 purchases of Soul Ark Scale', goalTarget:50, goalUnit:'purchases', goalCount:0,
 };
@@ -360,6 +361,7 @@ const defaultNonneg = () => [
   {id:uid(), auto:'piece',   title:'Post 1 solid piece (reel, carousel or post)'},
   {id:uid(), auto:'stories', title:"Post today's stories (routine + the day's type)"},
   {id:uid(), auto:'dms',     title:'Send 20 personalised DMs (webinar invite + a question)'},
+  {id:uid(), auto:'tiktok',  title:'Send 20 TikTok DMs'},
   {id:uid(), title:'Follow up with every warm conversation and offer calls'},
   {id:uid(), title:'Post in the Soul Ark community'},
   {id:uid(), title:'Log my numbers (2 minutes)'},
@@ -372,7 +374,7 @@ let S = loadState();
 
 function blank() {
   return {settings:{...DEFAULT_SETTINGS, offers:DEFAULT_SETTINGS.offers.map(o => ({...o})), goalDeadline:addDays(today(), 90)}, leads:[], clients:[], tasks:[], payments:[], daily:{}, proof:{},
-    expenses:[], bills:[], income:[], identity:DEFAULT_IDENTITY, mission:DEFAULT_MISSION, nonneg:defaultNonneg(), nonnegVersion:2, nonnegDone:{}, schedule:defaultSchedule(), contentLog:{}, weekly:{}};
+    expenses:[], bills:[], income:[], identity:DEFAULT_IDENTITY, mission:DEFAULT_MISSION, nonneg:defaultNonneg(), nonnegVersion:3, nonnegDone:{}, schedule:defaultSchedule(), contentLog:{}, weekly:{}};
 }
 function loadState() {
   let raw = null;
@@ -398,6 +400,9 @@ function migrate(o) {
   s.tasks.forEach(t => { t.cat = CAT_RENAME[t.cat] || t.cat; });
   if (!(o.settings && o.settings.offers)) { s.settings.offers = DEFAULT_SETTINGS.offers.map(x => ({...x})); s.settings.offerPrice = 995; s.settings.currency = '$'; } // two offers, prices in $
   if ((o.nonnegVersion || 0) < 2) { s.nonneg = defaultNonneg(); s.nonnegVersion = 2; } // one-time: the agreed 9 non-negotiables
+  if ((o.nonnegVersion || 0) >= 2 && (o.nonnegVersion || 0) < 3 && !s.nonneg.some(n => n.auto === 'tiktok')) { // one-time: add the TikTok DMs item next to the DMs item, keeping the rest as he left it
+    const i = s.nonneg.findIndex(n => n.auto === 'dms'); s.nonneg.splice(i >= 0 ? i + 1 : s.nonneg.length, 0, {id:uid(), auto:'tiktok', title:'Send 20 TikTok DMs'}); s.nonnegVersion = 3; }
+  if (s.nonnegVersion < 3) s.nonnegVersion = 3;
   if (s.settings.goalTitle === 'Hit £5K/month with the 6-week mentorship') s.settings.goalTitle = DEFAULT_SETTINGS.goalTitle; // goal is purchases, not £
   s.leads.forEach(l => { l.history = l.history || [{stage:l.stage, date:l.created || today()}]; l.created = l.created || l.history[0].date; });
   if (s.settings.sample && !(o.expenses && o.expenses.length)) { const sm = sampleData(); s.expenses = sm.expenses; s.bills = sm.bills; s.income = sm.income; } // older sample data had no spending
@@ -640,7 +645,8 @@ function taskRow(t) {
     <button class="x" data-act="delTask" data-id="${t.id}" aria-label="Delete task">×</button></div>`;
 }
 const fdateL = s => parse(s).toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric'});
-const doneOn = (item, d) => item.auto === 'dms' ? (((S.daily[d] || {}).dms) || 0) >= S.settings.dmTarget
+const DM_AUTO = {dms:['dms', 'dmTarget', 'DM'], tiktok:['tt', 'ttTarget', 'TikTok DM']};   // non-negotiables that tick themselves from a daily count
+const doneOn = (item, d) => DM_AUTO[item.auto] ? (((S.daily[d] || {})[DM_AUTO[item.auto][0]]) || 0) >= S.settings[DM_AUTO[item.auto][1]]
   : item.auto ? !!(S.contentLog[d] || {})[item.auto]
   : (S.nonnegDone[d] || []).includes(item.id);
 const isDone = id => { const n = S.nonneg.find(x => x.id === id); return n ? doneOn(n, today()) : false; };
@@ -669,7 +675,7 @@ function nnMove(id, dir) {
 }
 function nnToggle(id) {
   const t = today(), n = S.nonneg.find(x => x.id === id);
-  if (n && n.auto === 'dms') { toast('This ticks itself when your DM count reaches ' + S.settings.dmTarget + '. Use the + buttons on the scorecard.'); return; }
+  if (n && DM_AUTO[n.auto]) { toast(`This ticks itself when your ${DM_AUTO[n.auto][2]} count reaches ${S.settings[DM_AUTO[n.auto][1]]}. Use the + buttons on the scorecard.`); return; }
   if (n && n.auto) { const l = S.contentLog[t] = S.contentLog[t] || {}; l[n.auto] = !l[n.auto]; }   // shares the tick with the Content schedule
   else { const a = S.nonnegDone[t] = S.nonnegDone[t] || [], i = a.indexOf(id); if (i >= 0) a.splice(i, 1); else a.push(id); }
   save(); render();
@@ -707,7 +713,7 @@ function nnCard() {
   const active = S.nonneg.filter(n => nnApplies(n, t)), off = S.nonneg.filter(n => !nnApplies(n, t));
   const done = active.filter(n => isDone(n.id)).length, total = active.length, sk = nnStreak();
   const row = (n, rest) => `<div class="row ${rest ? 'offrow' : ''}" ${nnReorder ? `data-nn="${n.id}"` : ''}>${nnReorder ? '<span class="grip" draggable="true" title="Drag to reorder">⠿</span>' : ''}${rest ? '<span class="tick off"></span>' : `<button class="tick ${isDone(n.id) ? 'done' : ''}" data-act="nnToggle" data-id="${n.id}" aria-label="Done">${TICK}</button>`}
-    <div class="grow ${isDone(n.id) && !rest ? 'done-t' : ''}">${nnReorder ? `<input class="nninput" data-nn-title="${n.id}" value="${esc(n.title)}" aria-label="Rename">` : `<b style="font-weight:600">${esc(n.title)}</b>`}${n.auto ? ` <span class="chip">${n.auto === 'dms' ? 'from DM count' : 'from Content'}</span>` : ''}</div>
+    <div class="grow ${isDone(n.id) && !rest ? 'done-t' : ''}">${nnReorder ? `<input class="nninput" data-nn-title="${n.id}" value="${esc(n.title)}" aria-label="Rename">` : `<b style="font-weight:600">${esc(n.title)}</b>`}${n.auto ? ` <span class="chip">${DM_AUTO[n.auto] ? (n.auto === 'tiktok' ? 'from TikTok count' : 'from DM count') : 'from Content'}</span>` : ''}</div>
     ${nnReorder ? `<span class="mvs"><button class="mv" data-act="nnMove" data-id="${n.id}" data-dir="-1" aria-label="Move up">▲</button><button class="mv" data-act="nnMove" data-id="${n.id}" data-dir="1" aria-label="Move down">▼</button></span>` : ''}<button class="sunbtn ${n.sun ? 'on' : ''}" data-act="nnSun" data-id="${n.id}" title="Tap to ${n.sun ? 'stop doing' : 'also do'} this on Sundays">Sun</button><button class="x" data-act="nnDel" data-id="${n.id}" aria-label="Remove">×</button></div>`;
   const small = sun ? (total ? `${done} / ${total} done · Sunday: only items marked Sun` : 'Sunday is your day off · streak is safe') : `${done} / ${total} done today · ${sk ? sk + '-day streak' : 'complete all of them to start a streak'}`;
   return `<div class="card" style="margin-bottom:16px"><h2><span>My daily non-negotiables</span><span style="display:flex;gap:12px;align-items:center"><small>${small}</small><button class="btn sm ${nnReorder ? '' : 'ghost'}" data-act="nnReorder">${nnReorder ? 'Done' : 'Edit'}</button></span></h2>
@@ -737,7 +743,8 @@ function vToday() {
   const hr = now.getHours(), greet = hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening';
   const log = dayLog(t);
   const score = [
-    ['DMs sent', log.dms || 0, st.dmTarget, 'dms'],
+    ['Instagram DMs sent', log.dms || 0, st.dmTarget, 'dms'],
+    ['TikTok DMs sent', log.tt || 0, st.ttTarget, 'tt'],
     ['Conversations started', autoCount(t, 'convo'), st.convoTarget, null],
     ['Calls booked', autoCount(t, 'booked'), st.callTarget, null],
     ['Post published', (S.contentLog[t] || {}).piece ? 1 : 0, 1, null],
@@ -775,7 +782,7 @@ function vToday() {
         ${score.map(([label, v, tgt, key]) => `<div class="sc"><div class="grow"><b>${label}</b>${bar(v / tgt * 100, v >= tgt ? 'g' : '')}</div>
           ${key ? `<button class="pm" data-act="bump" data-k="${key}" data-n="-1" aria-label="minus">−</button>` : ''}
           <div class="n">${v}<small> / ${tgt}</small></div>
-          ${key ? `<button class="pm" data-act="bump" data-k="${key}" data-n="1" aria-label="plus">+</button>${key === 'dms' ? `<button class="pm" data-act="bump" data-k="dms" data-n="5" style="width:auto;padding:0 8px;font-size:12px">+5</button>` : ''}` : '<span class="sub" style="min-width:56px">auto</span>'}</div>`).join('')}
+          ${key ? `<button class="pm" data-act="bump" data-k="${key}" data-n="1" aria-label="plus">+</button> ${key === 'dms' || key === 'tt' ? `<button class="pm" data-act="bump" data-k="${key}" data-n="5" style="width:auto;padding:0 8px;font-size:12px">+5</button>` : ''}` : '<span class="sub" style="min-width:56px">auto</span>'}</div>`).join('')}
         <div class="sec" style="margin-top:14px">DMs · last 7 days</div>
         <div class="mini">${days.map(d => { const n = dayLog(d).dms || 0; return `<div title="${fdate(d)}: ${isSunday(d) && !n ? 'day off' : n + ' DMs'}"><i class="${isSunday(d) && n < st.dmTarget ? 'offbar' : n < st.dmTarget ? 'lo' : ''}" style="height:${isSunday(d) && !n ? 4 : Math.min(100, n / (st.dmTarget * 1.3) * 100)}%"></i>${parse(d).toLocaleDateString('en-GB',{weekday:'narrow'})}</div>`; }).join('')}</div></div>
       <div class="card"><h2>Clients needing you <small>this week</small></h2>
@@ -1090,8 +1097,9 @@ function vSettings() {
     <div class="two">${fld('Offer 2', 'o2name', s.offers[1].name)}${fld('Price (' + CUR + ')', 'o2price', s.offers[1].price, 'number', 'min="0"')}</div>
     <div class="two">${fld('Chase a lead after (days silent)', 'staleDays', s.staleDays, 'number', 'min="1"')}${fld('Default next follow-up (days)', 'gap', s.gap, 'number', 'min="1"')}</div>
     <div class="sec">Daily targets</div>
-    <div class="two">${fld('DMs sent', 'dmTarget', s.dmTarget, 'number', 'min="1"')}${fld('Conversations started', 'convoTarget', s.convoTarget, 'number', 'min="1"')}</div>
-    <div class="two">${fld('Calls booked', 'callTarget', s.callTarget, 'number', 'min="1"')}${fld('Content pieces', 'contentTarget', s.contentTarget, 'number', 'min="1"')}</div>
+    <div class="two">${fld('Instagram DMs sent', 'dmTarget', s.dmTarget, 'number', 'min="1"')}${fld('TikTok DMs sent', 'ttTarget', s.ttTarget, 'number', 'min="1"')}</div>
+    <div class="two">${fld('Conversations started', 'convoTarget', s.convoTarget, 'number', 'min="1"')}${fld('Calls booked', 'callTarget', s.callTarget, 'number', 'min="1"')}</div>
+    ${fld('Content pieces', 'contentTarget', s.contentTarget, 'number', 'min="1"')}
     ${fld('Your next offer (phase 2)', 'nextOffer', s.nextOffer)}
     <div class="mfoot"><button class="btn">Save settings</button></div></form></div>
   <div class="stack"><div class="card"><h2>Your data</h2>
@@ -1385,7 +1393,7 @@ document.addEventListener('submit', e => {
     S.nonneg.push({id:uid(), title:f.title.trim()}); save(); render();
   } else if (kind === 'settings') {
     const n = k => Math.max(1, +f[k] || DEFAULT_SETTINGS[k]);
-    Object.assign(S.settings, {bizName:f.bizName.trim() || 'My Coaching', ownerName:f.ownerName.trim(), target:n('target'), currency:f.currency || '$', offerPrice:Math.max(0, +f.o2price || 0), offers:[{id:'community', name:(f.o1name || '').trim() || 'Soul Ark Community', price:Math.max(0, +f.o1price || 0)}, {id:'bridge', name:(f.o2name || '').trim() || 'BRIDGE Mentorship', price:Math.max(0, +f.o2price || 0)}], staleDays:n('staleDays'), gap:n('gap'), dmTarget:n('dmTarget'), convoTarget:n('convoTarget'), callTarget:n('callTarget'), contentTarget:n('contentTarget'), nextOffer:f.nextOffer});
+    Object.assign(S.settings, {bizName:f.bizName.trim() || 'My Coaching', ownerName:f.ownerName.trim(), target:n('target'), currency:f.currency || '$', offerPrice:Math.max(0, +f.o2price || 0), offers:[{id:'community', name:(f.o1name || '').trim() || 'Soul Ark Community', price:Math.max(0, +f.o1price || 0)}, {id:'bridge', name:(f.o2name || '').trim() || 'BRIDGE Mentorship', price:Math.max(0, +f.o2price || 0)}], staleDays:n('staleDays'), gap:n('gap'), dmTarget:n('dmTarget'), ttTarget:n('ttTarget'), convoTarget:n('convoTarget'), callTarget:n('callTarget'), contentTarget:n('contentTarget'), nextOffer:f.nextOffer});
     document.title = S.settings.bizName + ' — Command Centre';
     save(); render(); toast('Settings saved');
   }
