@@ -206,13 +206,6 @@ td.r,th.r{text-align:right}
 .lad .st{padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid var(--line);font-weight:600;font-size:13px}
 .lad .st.end{background:rgba(202,163,28,.16);border-color:var(--gold);color:var(--gold2)}
 .lad .ar{color:var(--dim)}
-.tchips{display:flex;gap:6px;flex-wrap:wrap;flex:1 1 100%}
-.tchips label{position:relative;cursor:pointer}
-.tchips input{position:absolute;opacity:0;width:0;height:0;padding:0;border:0;pointer-events:none}
-.tchips span{display:inline-block;padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.04);font-weight:600;font-size:13px;color:var(--muted)}
-.tchips label:hover span{border-color:var(--line2)}
-.tchips input:checked + span{border-color:var(--gold);background:rgba(202,163,28,.16);color:var(--gold2)}
-.tchips input:focus-visible + span{outline:2px solid var(--gold);outline-offset:2px}
 .snote{white-space:pre-wrap;margin-top:4px;line-height:1.55}
 .qa label{display:block;font-weight:600;font-size:13.5px;margin:12px 0 5px}
 .qa textarea{min-height:76px;font-size:14px;line-height:1.55}
@@ -847,7 +840,7 @@ const SCALE_PRINCIPLE = `<div class="card ident" style="margin-bottom:16px"><h2>
 function scaleWeekText(n) {
   const w = S.scale.weeks[n] || {}, es = S.scale.entries.filter(e => e.week === n);
   return `WEEK ${n} (${fdate(wkStart(n))} to ${fdate(addDays(wkStart(n), 6))})` + (w.line ? `\nWeek in one line: ${w.line}` : '') + (w.next ? `\nChange for next week: ${w.next}` : '') + '\n' +
-    (es.length ? es.map(e => `- [${tName(e.type).replace(/^\S+\s/, '')}] [${pName(e.pillar)}]${e.star ? ' [PLAYBOOK]' : ''} ${e.text}`).join('\n') : '(no notes yet)');
+    (es.length ? es.map(e => `- ${SCALE_TYPES.some(t => t[0] === e.type) ? `[${tName(e.type).replace(/^\S+\s/, '')}] ` : ''}${e.pillar ? `[${pName(e.pillar)}] ` : ''}${e.star ? '[PLAYBOOK] ' : ''}${e.text}`).join('\n') : '(no notes yet)');
 }
 function scaleAllText() {
   const weeks = [...Array(8)].map((_, i) => i + 1).filter(n => S.scale.entries.some(e => e.week === n) || (S.scale.weeks[n] || {}).line || (S.scale.weeks[n] || {}).next);
@@ -857,7 +850,8 @@ function scaleAllText() {
     `\n\nPlease turn this into: 1) clear bullet points per pillar, 2) patterns and lessons you notice, 3) a first draft of the step-by-step plan I would give a coach who buys the Scale programme. Keep my wording where it is strong.`;
 }
 function playbookText() {
-  return '# Soul Ark Scale: playbook draft\n\n' + PILLARS.map(p => { const st = S.scale.entries.filter(e => e.pillar === p.id && e.star), own = (S.scale.playbook[p.id] || '').trim();
+  const loose = S.scale.entries.filter(e => e.star && !PILLARS.some(p => p.id === e.pillar));
+  return '# Soul Ark Scale: playbook draft\n\n' + (loose.length ? '## Starred notes (not sorted into a pillar yet)\n' + loose.map(e => `- ${e.text} (week ${e.week})`).join('\n') + '\n\n' : '') + PILLARS.map(p => { const st = S.scale.entries.filter(e => e.pillar === p.id && e.star), own = (S.scale.playbook[p.id] || '').trim();
     return `## ${p.name}: ${p.tag}\n` + (own ? own + '\n' : '') + (st.length ? st.map(e => `- ${e.text} (week ${e.week})`).join('\n') : (own ? '' : '(nothing yet)')); }).join('\n\n');
 }
 function vScale() {
@@ -870,10 +864,11 @@ function vScale() {
       return `<div class="card qa"><h2><span>${p.name} <span class="sub">· ${p.tag}</span></span>${p.focus ? '<span class="chip warn">Focus now</span>' : ''}</h2>
         <div class="sub" style="color:var(--gold2)">${p.mirror}</div>
         ${p.qs.map((q, i) => `<label for="q-${p.id}-${i}">${q}</label><textarea id="q-${p.id}-${i}" data-sq="${p.id}:${i}" placeholder="Your answer…">${esc(S.scale.answers[p.id][i])}</textarea>`).join('')}
-        <div class="sub" style="margin-top:10px">${c} journal note${c === 1 ? '' : 's'} tagged ${p.name}</div></div>`; }).join('')}</div>`;
+        </div>`; }).join('')}</div>`;
   if (scaleTab === 'playbook') { const starred = es.filter(e => e.star).length;
     return head + `<div class="card" style="margin-bottom:16px"><h2>How this turns into a playbook</h2><div class="sub" style="color:var(--text);line-height:1.7">1. Write in the Journal every day. 2. Star (★) the notes that are real lessons for a client. 3. Once a week, press <b>Copy everything for Claude</b> and paste it to me. I turn it into clean bullets and a plan. 4. Paste the polished bullets back into the pillar boxes below. After 8 weeks this page is the draft playbook.</div>
       <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="copyScaleAll">Copy everything for Claude</button><button class="btn ghost" data-act="copyPlaybook">Copy playbook draft</button><span class="sub" style="align-self:center">${starred} starred note${starred === 1 ? '' : 's'} so far</span></div></div>
+      ${(() => { const loose = es.filter(e => e.star && !PILLARS.some(p => p.id === e.pillar)); return loose.length ? `<div class="card qa" style="margin-bottom:16px"><h2>Starred notes <small>send these to Claude and they get sorted into the pillars</small></h2>${loose.map(e => `<div class="row"><div class="grow"><div class="snote" style="margin:0">${esc(e.text)}</div><div class="sub">Week ${e.week}</div></div><button class="btn sm good" data-act="sStar" data-id="${e.id}" title="Un-star">★</button></div>`).join('')}</div>` : ''; })()}
       <div class="cgrid">${PILLARS.map(p => { const st = es.filter(e => e.pillar === p.id && e.star);
         return `<div class="card qa"><h2><span>${p.name} <span class="sub">· ${p.tag}</span></span>${p.focus ? '<span class="chip warn">Focus now</span>' : ''}</h2>
           ${st.length ? st.map(e => `<div class="row"><div class="grow"><div class="snote" style="margin:0">${esc(e.text)}</div><div class="sub">Week ${e.week} · ${tName(e.type)}</div></div><button class="btn sm good" data-act="sStar" data-id="${e.id}" title="Un-star">★</button></div>`).join('') : '<div class="sub">Star notes in the Journal and they collect here.</div>'}
@@ -886,14 +881,12 @@ function vScale() {
   return head + status + `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">${pills}</div>
   <div class="card"><h2><span>Week ${n} <span style="color:var(--gold2)">· ${wkRange(n)}</span></span><small>Monday to Sunday${n === 1 ? ' · focus: marketing' : ''}</small></h2>
     <form data-form="scalenote" class="inline" style="flex-wrap:wrap;gap:8px">
-      <div class="tchips" role="radiogroup" aria-label="What kind of note">${SCALE_TYPES.map(([k, l], i) => `<label><input type="radio" name="type" value="${k}" ${i === 0 ? 'checked' : ''}><span>${l}</span></label>`).join('')}</div>
-      <textarea name="text" placeholder="Write it here…" required rows="3" style="flex:1 1 100%;min-height:84px"></textarea>
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex:1 1 100%"><span class="sub">About</span><select name="pillar" aria-label="Pillar" style="width:auto;min-width:160px">${PILLARS.map(p => `<option value="${p.id}" ${p.focus ? 'selected' : ''}>${p.name}</option>`).join('')}</select>
-        <button class="btn" style="margin-left:auto">Add to week ${n}</button></div></form>
-    ${SCALE_TYPES.map(([k, l]) => { const g = wes.filter(e => e.type === k).reverse();
-      return g.length ? `<div class="sec" style="margin-top:16px">${l} · ${g.length}</div>${g.map(e => `<div class="row"><div class="grow"><span class="chip">${pName(e.pillar)}</span> <span class="sub">${fdate(e.date)}</span><div class="snote">${esc(e.text)}</div></div>
+      <textarea name="text" placeholder="What did you learn, change, do or notice? The good and the bad. Write it here…" required rows="4" style="flex:1 1 100%;min-height:110px"></textarea>
+      <div style="display:flex;justify-content:flex-end;flex:1 1 100%"><button class="btn">Add to week ${n}</button></div></form>
+    ${(() => { const days = [...new Set(wes.map(e => e.date))].sort().reverse();
+      return days.map(d => `<div class="sec" style="margin-top:16px">${fdate(d)}</div>${wes.filter(e => e.date === d).reverse().map(e => `<div class="row"><div class="grow">${SCALE_TYPES.some(t => t[0] === e.type) ? `<span class="chip">${tName(e.type)}</span> ` : ''}${PILLARS.some(p => p.id === e.pillar) ? `<span class="chip">${pName(e.pillar)}</span>` : ''}<div class="snote">${esc(e.text)}</div></div>
         <button class="btn sm ${e.star ? 'good' : 'ghost'}" data-act="sStar" data-id="${e.id}" title="Star it if a client should learn this">${e.star ? '★ Playbook' : '☆ Playbook'}</button>
-        <button class="btn sm ghost" data-act="sEdit" data-id="${e.id}">Edit</button><button class="x" data-act="sDel" data-id="${e.id}" aria-label="Delete">×</button></div>`).join('')}` : ''; }).join('') || '<div class="empty" style="margin-top:14px">Nothing in week ' + n + ' yet. Write what you learn, what you change, what worked and what did not.</div>'}</div>
+        <button class="btn sm ghost" data-act="sEdit" data-id="${e.id}">Edit</button><button class="x" data-act="sDel" data-id="${e.id}" aria-label="Delete">×</button></div>`).join('')}`).join('') || '<div class="empty" style="margin-top:14px">Nothing in week ' + n + ' yet. Write what you learn, what you change, what worked and what did not.</div>'; })()}</div>
   <div class="card" style="margin-top:16px"><h2>Week ${n} wrap-up</h2>
     <label class="fld"><span>The week in one line</span><input data-swk="${n}:line" value="${esc(w.line || '')}" placeholder="e.g. People still do not know what BRIDGE is"></label>
     <label class="fld"><span>The one thing I will change next week</span><input data-swk="${n}:next" value="${esc(w.next || '')}" placeholder="e.g. Put what you get in the first line of every reel"></label>
@@ -902,7 +895,6 @@ function vScale() {
 function scaleEditForm(id) {
   const e = S.scale.entries.find(x => x.id === id); if (!e) return;
   modal('Edit note', `<form data-form="scaleedit" data-id="${id}">
-    <div class="two">${sel('Type', 'type', SCALE_TYPES, e.type)}${sel('Pillar', 'pillar', PILLARS.map(p => [p.id, p.name]), e.pillar)}</div>
     ${sel('Week', 'week', [1,2,3,4,5,6,7,8].map(k => [k, 'Week ' + k]), e.week)}
     <label class="fld"><span>Note</span><textarea name="text" style="min-height:140px" required>${esc(e.text)}</textarea></label>
     <div class="mfoot"><button class="btn">Save</button></div></form>`);
@@ -1489,11 +1481,11 @@ document.addEventListener('submit', e => {
       save(); closeModal(); render(); toast('Lead added');
     }
   } else if (kind === 'scalenote') {
-    S.scale.entries.push({id:uid(), week:scaleWk(), date:t, type:f.type, pillar:f.pillar, text:f.text.trim(), star:false});
+    S.scale.entries.push({id:uid(), week:scaleWk(), date:t, type:'note', pillar:'', text:f.text.trim(), star:false});
     save(); render(); toast('Added to week ' + scaleWk());
     const q = document.querySelector('form[data-form=scalenote] textarea'); if (q) q.focus();
   } else if (kind === 'scaleedit') {
-    const e = S.scale.entries.find(x => x.id === id); if (e) Object.assign(e, {type:f.type, pillar:f.pillar, week:+f.week, text:f.text.trim()});
+    const e = S.scale.entries.find(x => x.id === id); if (e) Object.assign(e, {week:+f.week, text:f.text.trim()});
     save(); closeModal(); render();
   } else if (kind === 'theme') {
     S.themes.push({id:uid(), date:f.date || t, emotion:f.emotion, source:f.source, pain:f.pain.trim(), idea:(f.idea || '').trim(), made:false});
