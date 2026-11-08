@@ -904,11 +904,17 @@ function parseLadderImport(txt) {
   Object.keys(out).forEach(k => { out[k] = out[k].trim(); if (!out[k]) delete out[k]; });
   return out;
 }
-const autofillBox = p => `<div class="card" style="background:rgba(202,163,28,.06);border-color:var(--line2);margin:4px 0 16px"><h2>Fast way <small>write step 1, then let Claude draft the rest</small></h2>
-  <div class="sub" style="color:var(--text);line-height:1.6;margin-bottom:10px"><b>1.</b> Write step 1 below. <b>2.</b> Press <b>Copy for Claude</b> and paste it into Claude. <b>3.</b> Paste Claude's reply here and press <b>Fill the boxes</b>. Then read everything, fix what isn't true, and score each step yourself.</div>
+const scoreRow = (pid, k, cur) => `<div class="scorerow" role="group" aria-label="Score 1 to 10">${[1,2,3,4,5,6,7,8,9,10].map(n => `<button class="${cur === n ? 'on' : ''}" data-sv="${n <= 3 ? 'lo' : n <= 6 ? 'mid' : 'hi'}" data-act="ladScore" data-p="${pid}" data-k="${k}" data-n="${n}" aria-label="Score ${n}">${n}</button>`).join('')}</div>`;
+const stepOneBox = p => { const l = S.scale.ladder[p.id], r = rungPrompts(p);
+  return `<div class="card" style="background:rgba(202,163,28,.06);border-color:var(--line2);margin:4px 0 16px"><h2>${r.understand[0]} <small>write this one in as much detail as you can. The rest is drafted from it</small></h2>
+  <div class="sub" style="margin-bottom:8px">${r.understand[1]}</div>
+  <textarea id="l-${p.id}-understand" data-lad="${p.id}:understand" placeholder="Write everything: your strengths, patterns, fears, what drives you, what holds you back…" style="min-height:190px;font-size:15px;line-height:1.6">${esc(l.understand)}</textarea>
+  <div class="sub" style="margin-top:10px">How well do I really understand this? (1 to 10)</div>${scoreRow(p.id, 'understand', l.sc.understand)}
+  <div class="sec" style="margin-top:18px">Then let Claude draft the rest</div>
+  <div class="sub" style="color:var(--text);line-height:1.6;margin:6px 0 10px"><b>1.</b> Press <b>Copy for Claude</b> and paste it into Claude. <b>2.</b> Paste Claude's reply below and press <b>Fill the boxes</b>. <b>3.</b> Read each box, fix what isn't true, and score each step yourself.</div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="btn sm" data-act="ladCopy" data-p="${p.id}">Copy for Claude</button></div>
-  <textarea id="imp-${p.id}" placeholder="Paste Claude's reply here (the part that starts with [VALUE])…" style="min-height:90px"></textarea>
-  <div style="margin-top:8px"><button class="btn sm ghost" data-act="ladFill" data-p="${p.id}">Fill the boxes</button></div></div>`;
+  <textarea id="imp-${p.id}" data-imp="${p.id}" placeholder="Paste Claude's reply here (the part that starts with [VALUE])…" style="min-height:80px">${esc((drafts.__imp || {})[p.id] || '')}</textarea>
+  <div style="margin-top:8px"><button class="btn sm ghost" data-act="ladFill" data-p="${p.id}">Fill the boxes</button></div></div>`; };
 function ladderText() {
   const out = PILLARS.map(p => { const l = S.scale.ladder[p.id], r = rungPrompts(p), has = RUNGS.some(k => l[k] || l.sc[k]) || l.change || l.biz; if (!has) return '';
     return `## ${p.name} (${p.tag})\n` + RUNGS.map(k => (l[k] || l.sc[k]) ? `${r[k][0]}${l.sc[k] ? ` [${l.sc[k]}/10]` : ''}: ${l[k] || '(no answer)'}` : '').filter(Boolean).join('\n') + (l.change ? `\nWhat needs to change: ${l.change}` : '') + (l.biz ? `\nHow I will reflect it in the business: ${l.biz}` : ''); }).filter(Boolean);
@@ -941,10 +947,10 @@ function vScale() {
     <div class="card"><h2><span>${p.name} <span class="sub">· ${p.tag}</span></span>${p.focus ? '<span class="chip warn">Focus now</span>' : ''}</h2>
       <div class="sub" style="color:var(--gold2);margin-bottom:8px">${p.mirror}</div>
       <div style="line-height:1.6;margin-bottom:4px"><b>What it is.</b> ${esc(p.def)}</div><div class="sub" style="margin-bottom:10px"><b style="color:var(--text)">Includes:</b> ${esc(p.inc)}</div>${lad}
-      ${autofillBox(p)}
-      <div class="cgrid">${RUNGS.map(k => `<div class="qa"><label for="l-${p.id}-${k}" style="margin-top:0">${r[k][0]}</label><div class="sub" style="margin-bottom:6px">${r[k][1]}</div>
+      ${stepOneBox(p)}
+      <div class="cgrid">${RUNGS.filter(k => k !== 'understand').map(k => `<div class="qa"><label for="l-${p.id}-${k}" style="margin-top:0">${r[k][0]}</label><div class="sub" style="margin-bottom:6px">${r[k][1]}</div>
         <textarea id="l-${p.id}-${k}" data-lad="${p.id}:${k}" placeholder="Your answer…">${esc(l[k])}</textarea>
-        <div class="scorerow" role="group" aria-label="Score 1 to 10">${[1,2,3,4,5,6,7,8,9,10].map(n => `<button class="${l.sc[k] === n ? 'on' : ''}" data-sv="${n <= 3 ? 'lo' : n <= 6 ? 'mid' : 'hi'}" data-act="ladScore" data-p="${p.id}" data-k="${k}" data-n="${n}" aria-label="Score ${n}">${n}</button>`).join('')}</div></div>`).join('')}</div>
+        ${scoreRow(p.id, k, l.sc[k])}</div>`).join('')}</div>
       <div class="cgrid" style="margin-top:14px"><div class="qa"><label for="l-${p.id}-change" style="margin-top:0">What needs to change?</label><div class="sub" style="margin-bottom:6px">${p.id === 'self' ? 'Looking at the weakest step above, what has to change in me?' : 'Looking at the weakest step above, what has to change here?'}</div><textarea id="l-${p.id}-change" data-lad="${p.id}:change" placeholder="Your answer…">${esc(l.change)}</textarea></div>
         <div class="qa"><label for="l-${p.id}-biz" style="margin-top:0">${p.id === 'self' ? 'How will that show up in the business?' : 'What will I do about it in the next 7 days?'}</label><div class="sub" style="margin-bottom:6px">${p.id === 'self' ? 'Mirror it: how does fixing this in me change what I do in marketing, product and sales?' : 'One clear action, then it goes in your journal.'}</div><textarea id="l-${p.id}-biz" data-lad="${p.id}:biz" placeholder="Your answer…">${esc(l.biz)}</textarea>
           <div style="margin-top:8px"><button class="btn sm ghost" data-act="ladAdd" data-p="${p.id}">Add to week ${scaleWk()} journal</button></div></div></div>
@@ -1529,7 +1535,7 @@ document.addEventListener('click', e => {
       if (!keys.length) { toast('Could not find the [VALUE], [BELIEVE]… headings. Paste Claude’s whole reply'); break; }
       const clash = keys.filter(k => (l[k] || '').trim() && l[k].trim() !== got[k]).length;
       if (clash && !confirm(`This will replace what you already wrote in ${clash} box${clash === 1 ? '' : 'es'}. Continue?`)) break;
-      keys.forEach(k => { l[k] = got[k]; }); save(); render(); toast(`Filled ${keys.length} box${keys.length === 1 ? '' : 'es'}. Read them, fix anything untrue, then score each step`); break; }
+      keys.forEach(k => { l[k] = got[k]; }); if (drafts.__imp) delete drafts.__imp[pl.id]; saveDrafts(); save(); render(); toast(`Filled ${keys.length} box${keys.length === 1 ? '' : 'es'}. Read them, fix anything untrue, then score each step`); break; }
     case 'scalePillar': scalePillar = el.dataset.p; saveUI(); render(); break;
     case 'ladScore': { const l = S.scale.ladder[el.dataset.p], k = el.dataset.k, n = +el.dataset.n; l.sc[k] = l.sc[k] === n ? 0 : n; save(); render(); break; }
     case 'ladAdd': { const pl = PILLARS.find(x => x.id === el.dataset.p), txt = (S.scale.ladder[pl.id].biz || '').trim(); if (!txt) { toast('Write the action first'); break; }
@@ -1724,7 +1730,8 @@ document.addEventListener('change', e => {
 
 document.addEventListener('input', e => {   // Scale Notes boxes save as you type
   const d = e.target.dataset; if (!d) return;
-  if (d.lad) { const [p, k] = d.lad.split(':'); S.scale.ladder[p][k] = e.target.value; save(); }
+  if (d.imp) { drafts.__imp = drafts.__imp || {}; drafts.__imp[d.imp] = e.target.value; saveDrafts(); }
+  else if (d.lad) { const [p, k] = d.lad.split(':'); S.scale.ladder[p][k] = e.target.value; save(); }
   else if (d.sq) { const [p, i] = d.sq.split(':'); S.scale.answers[p][+i] = e.target.value; save(); }
   else if (d.spb) { S.scale.playbook[d.spb] = e.target.value; save(); }
   else if (d.swk) { const [n, k] = d.swk.split(':'); (S.scale.weeks[n] = S.scale.weeks[n] || {})[k] = e.target.value; save(); }
