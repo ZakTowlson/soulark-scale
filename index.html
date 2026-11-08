@@ -381,12 +381,61 @@ const PILLARS = [
   {id:'ecosystem', def:'How everything connects: the path a person walks from stranger to follower to member to client to advocate, and the environment that keeps them moving and staying.', inc:'Content, free community, webinar, offers, client journey, referrals, where people drop off.', subject:'how everything connects', name:'Ecosystem', tag:'How it all connects', mirror:'Belief grows in the right environment.', qs:['What are the parts (content, community, webinar, offers, clients) and how do they connect?','Where does someone go after each step? Where do they drop off?','What makes people stay and refer others?','What is missing?']},
   {id:'systems', def:'The routines, tracking and reviews that make results repeatable without relying on motivation: what happens every day, what gets measured and how you review it.', inc:'Non-negotiables, this dashboard, weekly review, scripts, what can be automated or handed off.', subject:'my daily systems', name:'Systems', tag:'The discipline', mirror:'What you repeat is what you become.', qs:['What must happen every day, no matter what?','What do I track, and what does it tell me?','How do I review each week?','What can be automated or handed off?']},
 ];
+/* step 1 (Understand) is a set of specific questions per pillar; the answers are joined into one text for Claude */
+const U_QS = {
+  self:[['strengths','What are my strengths?','What am I naturally good at? What do people say I am great at? What gives me energy?'],
+    ['weak','What are my weaknesses, and what holds me back?','Be honest. Habits, doubts, things I put off.'],
+    ['fears','What are my fears?','In life and in business. What am I afraid will happen if I really go for it?'],
+    ['desires','What do I truly desire?','Beyond money. The life, the feeling, the freedom I want.'],
+    ['goals','What are my goals?','The next 12 months, and the bigger vision.'],
+    ['why','What drives me?','My why. Faith, family, who I am doing this for.'],
+    ['values','What do I value, and what will I never compromise on?',''],
+    ['beliefs','What do I believe about money, selling and being seen?','True or not, what do I tell myself?'],
+    ['patterns','What patterns do I repeat?','When I get stuck, what do I do? What do I avoid, and what do I do instead?'],
+    ['best','When am I at my best?','What is happening, what did I do that morning, who is around me?']],
+  product:[['get','What exactly do people get?','List what is inside Soul Ark Community and BRIDGE.'],
+    ['for','Who is it for, and who is it not for?',''],
+    ['problem','What problem does it solve, in their words?',''],
+    ['ba','What is their life like before, and after?',''],
+    ['price','What is the price, and why is it worth it?',''],
+    ['proof','What proof do I have?','Results, testimonials, stories.'],
+    ['diff','What makes it different from other options?',''],
+    ['unclear','What is confusing or unclear about it right now?','Where do people get it wrong or ask the same question?']],
+  marketing:[['find','How does a stranger find out about me today?','Every way they could meet me.'],
+    ['say','What am I saying in my content, and does it say what I sell?',''],
+    ['who','Who exactly am I speaking to?','Describe them: age, situation, what they struggle with.'],
+    ['pain','What pain points and emotions do I hear most?','Use your themes of the week.'],
+    ['line','What is my one-line message right now?','If I have to, write it badly.'],
+    ['works','What is working, and what is not?',''],
+    ['avoid','What do I avoid or struggle with in marketing?','Camera, selling, posting, showing my story.'],
+    ['stories','What proof and stories could I share?','']],
+  sales:[['process','What is my process from first message to purchase?','Step by step as it really happens.'],
+    ['numbers','How many DMs, conversations, calls and sales a week right now?',''],
+    ['obj','What objections do I hear most?',''],
+    ['drop','Where do people go quiet or drop off?',''],
+    ['feel','How do I feel when I invite someone to buy?','What do I do in my head and body?'],
+    ['follow','How do I follow up?','']],
+  ecosystem:[['parts','What are all the parts?','Content, free community, webinar, offers, clients, anything else.'],
+    ['path','How does someone move from stranger to member to client?',''],
+    ['drop','Where do people drop off or get lost?',''],
+    ['stay','What keeps members active and referring others?',''],
+    ['missing','What is missing?','']],
+  systems:[['daily','What do I do every day without fail?',''],
+    ['track','What do I track, and how often do I look at it?',''],
+    ['cracks','What falls through the cracks?',''],
+    ['time','What takes my time that should not?',''],
+    ['review','How do I review my week?',''],
+    ['auto','What could be automated or handed off?','']],
+};
+const uqCount = pid => { const l = S.scale.ladder[pid]; return `${(U_QS[pid] || []).filter(q => (l.uq[q[0]] || '').trim()).length} of ${(U_QS[pid] || []).length} answered.`; };
+const composeUnderstand = pid => { const l = S.scale.ladder[pid], parts = (U_QS[pid] || []).filter(q => (l.uq[q[0]] || '').trim()).map(q => `${q[1]}\n${l.uq[q[0]].trim()}`);
+  if ((l.ufree || '').trim()) parts.push(`In my own words:\n${l.ufree.trim()}`); return parts.join('\n\n'); };
 const RUNGS = ['understand', 'value', 'believe', 'know', 'act'];
-const blankLadder = () => ({understand:'', value:'', believe:'', know:'', act:'', change:'', biz:'', sc:{understand:0, value:0, believe:0, know:0, act:0}});
+const blankLadder = () => ({uq:{}, ufree:'', understand:'', value:'', believe:'', know:'', act:'', change:'', biz:'', sc:{understand:0, value:0, believe:0, know:0, act:0}});
 const defaultScale = () => ({start:'2026-11-09', entries:[], weeks:{}, ladder:Object.fromEntries(PILLARS.map(p => [p.id, blankLadder()])), answers:Object.fromEntries(PILLARS.map(p => [p.id, p.qs.map(() => '')])), playbook:Object.fromEntries(PILLARS.map(p => [p.id, '']))});
 const normScale = o => { const d = defaultScale(), x = {...d, ...(o || {})};
   x.answers = {...d.answers, ...(x.answers || {})}; PILLARS.forEach(p => { x.answers[p.id] = p.qs.map((_, i) => (x.answers[p.id] || [])[i] || ''); });
-  x.ladder = x.ladder || {}; PILLARS.forEach(p => { const l = x.ladder[p.id] || {}; x.ladder[p.id] = {...blankLadder(), ...l, sc:{...blankLadder().sc, ...(l.sc || {})}}; });
+  x.ladder = x.ladder || {}; PILLARS.forEach(p => { const l = x.ladder[p.id] || {}; const old = l.ufree === undefined && !l.uq && (l.understand || '').trim() ? l.understand : ''; x.ladder[p.id] = {...blankLadder(), ...l, uq:{...(l.uq || {})}, sc:{...blankLadder().sc, ...(l.sc || {})}}; if (old) x.ladder[p.id].ufree = old; });
   x.playbook = {...d.playbook, ...(x.playbook || {})}; x.weeks = x.weeks || {}; x.entries = Array.isArray(x.entries) ? x.entries : []; return x; };
 const WEEKLY = [['yt','YouTube videos',3,true], ['clip','Clipping session',1,true], ['sales','Sales days (post + stories)',2,false], ['client','Client story',1,false], ['story','Your own story',1,false]];
 const EXP_CATS = ['Bills','Business & software','Marketing','Food','Transport','Personal','Giving','Other'];
@@ -956,12 +1005,14 @@ async function aiRun(pid, qa) {
   st.busy = false; render();
 }
 const stepOneBox = p => { const l = S.scale.ladder[p.id], r = rungPrompts(p), st = aiState[p.id] || {}, hasKey = !!getKey();
-  return `<div class="card" style="background:rgba(202,163,28,.06);border-color:var(--line2);margin:4px 0 16px"><h2>${r.understand[0]} <small>write this one in as much detail as you can. The rest is drafted from it</small></h2>
+  return `<div class="card" style="background:rgba(202,163,28,.06);border-color:var(--line2);margin:4px 0 16px"><h2>${r.understand[0]} <small>answer these first. The rest is drafted from your answers</small></h2>
   <div class="sub" style="margin-bottom:8px">${r.understand[1]}</div>
-  <textarea id="l-${p.id}-understand" data-lad="${p.id}:understand" placeholder="Write everything: your strengths, patterns, fears, what drives you, what holds you back…" style="min-height:190px;font-size:15px;line-height:1.6">${esc(l.understand)}</textarea>
+  <div class="sub" style="margin-bottom:10px;color:var(--text)">Answer as many as you can. A few honest lines each is plenty. <b id="uqc-${p.id}">${uqCount(p.id)}</b></div>
+  <div class="cgrid">${(U_QS[p.id] || []).map(([k, label, hint]) => `<div class="qa"><label for="uq-${p.id}-${k}" style="margin-top:0">${label}</label>${hint ? `<div class="sub" style="margin-bottom:6px">${hint}</div>` : ''}<textarea id="uq-${p.id}-${k}" data-uq="${p.id}:${k}" placeholder="Your answer…" style="min-height:92px">${esc(l.uq[k] || '')}</textarea></div>`).join('')}</div>
+  <div class="qa"><label for="uf-${p.id}" style="margin-top:14px">Anything else I want to say?</label><div class="sub" style="margin-bottom:6px">Anything that did not fit above. Write freely.</div><textarea id="uf-${p.id}" data-ufree="${p.id}" placeholder="In my own words…" style="min-height:110px">${esc(l.ufree || '')}</textarea></div>
   <div class="sub" style="margin-top:10px">How well do I really understand this? (1 to 10)</div>${scoreRow(p.id, 'understand', l.sc.understand)}
   <div class="sec" style="margin-top:18px">Then let Claude draft the rest</div>
-  ${hasKey ? `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0"><button class="btn" data-act="aiDraft" data-p="${p.id}" ${st.busy ? 'disabled' : ''}>${st.busy ? 'Thinking… a few seconds' : 'Draft the rest'}</button><span class="sub">or press Cmd+Enter inside the box above</span></div>`
+  ${hasKey ? `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0"><button class="btn" data-act="aiDraft" data-p="${p.id}" ${st.busy ? 'disabled' : ''}>${st.busy ? 'Thinking… a few seconds' : 'Draft the rest'}</button><span class="sub">or press Cmd+Enter while typing in any box above</span></div>`
     : `<div class="sub" style="color:var(--text);line-height:1.6;margin:8px 0 10px">To make this automatic, add your Claude key once in Settings. <button class="btn sm ghost" data-act="go" data-v="settings" style="margin-left:6px">Open Settings</button></div>`}
   ${st.err ? `<div class="chase-bar" style="margin:8px 0">${esc(st.err)}</div>` : ''}
   ${st.qs && st.qs.length ? `<div class="card" style="margin:10px 0;background:rgba(255,255,255,.03)"><h2>A few quick questions <small>so I get this right</small></h2>${st.qs.map((q, i) => `<label class="fld"><span>${esc(q)}</span><input data-aiq="${p.id}:${i}" value="${esc((st.ans || [])[i] || '')}" placeholder="Your answer…"></label>`).join('')}
@@ -1632,7 +1683,7 @@ document.addEventListener('click', e => {
   }
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-document.addEventListener('keydown', e => { const d = e.target.dataset; if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && d && d.lad && d.lad.endsWith(':understand')) { e.preventDefault(); aiRun(d.lad.split(':')[0]); } });
+document.addEventListener('keydown', e => { const d = e.target.dataset; if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && d && (d.uq || d.ufree)) { e.preventDefault(); aiRun((d.uq || d.ufree).split(':')[0]); } });
 
 document.addEventListener('submit', e => {
   const form = e.target.closest('form[data-form]'); if (!form) return;
@@ -1796,7 +1847,9 @@ document.addEventListener('change', e => {
 
 document.addEventListener('input', e => {   // Scale Notes boxes save as you type
   const d = e.target.dataset; if (!d) return;
-  if (d.aiq) { const [pp, ii] = d.aiq.split(':'); const st = aiState[pp] = aiState[pp] || {}; st.ans = st.ans || []; st.ans[+ii] = e.target.value; }
+  if (d.uq) { const [pp, kk] = d.uq.split(':'); const lw = S.scale.ladder[pp]; lw.uq[kk] = e.target.value; lw.understand = composeUnderstand(pp); const cc = document.getElementById('uqc-' + pp); if (cc) cc.textContent = uqCount(pp); save(); }
+  else if (d.ufree) { const lw = S.scale.ladder[d.ufree]; lw.ufree = e.target.value; lw.understand = composeUnderstand(d.ufree); save(); }
+  else if (d.aiq) { const [pp, ii] = d.aiq.split(':'); const st = aiState[pp] = aiState[pp] || {}; st.ans = st.ans || []; st.ans[+ii] = e.target.value; }
   else if (d.imp) { drafts.__imp = drafts.__imp || {}; drafts.__imp[d.imp] = e.target.value; saveDrafts(); }
   else if (d.lad) { const [p, k] = d.lad.split(':'); S.scale.ladder[p][k] = e.target.value; save(); }
   else if (d.sq) { const [p, i] = d.sq.split(':'); S.scale.answers[p][+i] = e.target.value; save(); }
