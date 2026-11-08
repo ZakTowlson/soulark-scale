@@ -115,6 +115,12 @@ textarea{resize:vertical;min-height:70px}
 .lcard{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:11px 12px;margin-bottom:9px;cursor:grab}
 .lcard:hover{border-color:var(--line2)}
 .lcard.stuck{border-left:3px solid var(--bad)}
+.lcard.due{border:1px solid rgba(238,98,98,.7);border-left:4px solid var(--bad);background:rgba(238,98,98,.12)}
+.lcard.soon{border:1px solid rgba(242,169,59,.5);border-left:4px solid var(--warn);background:rgba(242,169,59,.07)}
+.lcard .a .ch.go{background:var(--good);color:#06281a}
+.lcard .a .ch.go:hover{background:#5fd3a0;color:#06281a}
+.chase-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:rgba(238,98,98,.1);border:1px solid rgba(238,98,98,.45);border-radius:12px;padding:10px 14px;margin-bottom:14px;font-weight:600}
+.chase-bar.ok{background:rgba(67,192,138,.08);border-color:rgba(67,192,138,.35);color:var(--muted);font-weight:500}
 .lcard.dragging{opacity:.4}
 .lcard .t{display:flex;justify-content:space-between;gap:8px}
 .lcard .m{margin:7px 0 2px;display:flex;gap:5px;flex-wrap:wrap}
@@ -581,8 +587,9 @@ function closeModal() {
 }
 
 /* ================= views ================= */
-const NAV = [['today','Today','home'],['content','Content schedule','film'],['pipeline','Pipeline','funnel'],['followups','Follow-ups','bell'],['clients','Clients','users'],['tasks','To-do','check'],['revenue','Money','pound'],['proof','Proof Engine','trophy'],['settings','Settings','cog']];
+const NAV = [['today','Today','home'],['content','Content schedule','film'],['pipeline','Pipeline','funnel'],['clients','Clients','users'],['tasks','To-do','check'],['revenue','Money','pound'],['proof','Proof Engine','trophy'],['settings','Settings','cog']];
 let view = (location.hash || '').replace('#', '') || 'today';
+if (view === 'followups') view = 'pipeline';   // the Follow-ups tab was folded into the Pipeline
 if (!NAV.some(n => n[0] === view)) view = 'today';
 let proofRange = 90, taskFilter = 'All';
 let folded = {identity:false, mission:false};   // identity / mission statement collapsed?
@@ -594,7 +601,7 @@ function renderSide() {
   $('#side').innerHTML = `
     <div class="brand"><div class="mono">${esc(initials)}</div><div><b>${esc(st.bizName)}</b><small>Command Centre</small></div></div>
     <nav class="nav">${NAV.map(([id, label, ic]) => {
-      const badge = id === 'followups' && due ? `<span class="badge">${due}</span>` : id === 'tasks' && tk ? `<span class="badge gold">${tk}</span>` : '';
+      const badge = id === 'pipeline' && due ? `<span class="badge">${due}</span>` : id === 'tasks' && tk ? `<span class="badge gold">${tk}</span>` : '';
       return `<button class="${view === id ? 'on' : ''}" data-act="go" data-v="${id}">${svgI(ic)}${label}${badge}</button>`;
     }).join('')}</nav>
     <div class="sidefoot"><small>${new Date().toLocaleDateString('en-GB',{month:'long'})} revenue</small><b>${gbp(rev)}</b> <span class="sub">/ ${gbp(st.target)}</span>${bar(rev / st.target * 100)}
@@ -604,7 +611,7 @@ function renderSide() {
 function render() {
   CUR = S.settings.currency || '$';
   renderSide();
-  const fn = {today:vToday, content:vContent, pipeline:vPipeline, followups:vFollow, clients:vClients, tasks:vTasks, revenue:vRevenue, proof:vProof, settings:vSettings}[view];
+  const fn = {today:vToday, content:vContent, pipeline:vPipeline, clients:vClients, tasks:vTasks, revenue:vRevenue, proof:vProof, settings:vSettings}[view];
   const banner = S.settings.sample ? `<div class="banner"><span><b>You're looking at sample data</b> — so you can see how everything works.</span><button class="btn sm" data-act="clearSample">Clear it &amp; start fresh</button></div>` : '';
   $('#main').innerHTML = banner + fn();
   restoreDrafts($('#main'));
@@ -748,7 +755,7 @@ function vToday() {
   ${contentTodayCard()}
   <div class="kpis">
     <div class="kpi"><div class="l">Cash this month</div><div class="v">${gbp(rev)}</div><div class="s">${Math.round(rev / st.target * 100)}% of ${gbp(st.target)} monthly target</div>${bar(rev / st.target * 100)}</div>
-    <button class="kpi ${stuckVal ? 'alert' : ''}" data-act="go" data-v="followups"><div class="l">Money stuck in chats</div><div class="v">${gbp(stuckVal)}</div><div class="s">${stuck.length} ${stuck.length === 1 ? 'person' : 'people'} waiting on you</div></button>
+    <button class="kpi ${stuckVal ? 'alert' : ''}" data-act="go" data-v="pipeline"><div class="l">Money stuck in chats</div><div class="v">${gbp(stuckVal)}</div><div class="s">${stuck.length} ${stuck.length === 1 ? 'person' : 'people'} waiting on you</div></button>
     <button class="kpi" data-act="go" data-v="pipeline"><div class="l">Open pipeline</div><div class="v">${gbp(pipe)}</div><div class="s">${gbp(wtd)} likely · ${open.length} leads</div></button>
     <button class="kpi" data-act="go" data-v="clients"><div class="l">Active clients</div><div class="v">${act.length}</div><div class="s">${ending ? ending + ' finishing now' : 'in the 6-week programme'}</div></button>
     <div class="kpi"><div class="l">Month forecast</div><div class="v">${gbp(proj)}</div><div class="s">${need ? 'Need ' + needText(need) + ' to hit your target' : 'Monthly target hit 🎯'}</div></div>
@@ -757,7 +764,7 @@ function vToday() {
     <div class="stack">
       <div class="card"><h2>Chase these first <small>${chaseTotal > 6 ? `top 6 of ${chaseTotal} · ` : ''}biggest money first</small></h2>
         ${chase.length ? chase.map(leadRow).join('') : '<div class="empty">Nobody waiting on you. Go start new conversations.</div>'}
-        ${chaseTotal > 6 ? '<div style="margin-top:8px"><button class="btn sm ghost" data-act="go" data-v="followups">See all follow-ups</button></div>' : ''}${quickAdd()}</div>
+        ${chaseTotal > 6 ? '<div style="margin-top:8px"><button class="btn sm ghost" data-act="go" data-v="pipeline">See them in the pipeline</button></div>' : ''}${quickAdd()}</div>
       <div class="card"><h2>Today's to-do <small>${tasks.length} left · ${doneToday.length} done</small></h2>
         ${tasks.map(taskRow).join('') || '<div class="empty">All clear. Nice work.</div>'}
         <form data-form="task" class="inline" style="margin-top:12px"><input type="hidden" name="cat" value="Admin"><input type="hidden" name="due" value="${t}"><input type="hidden" name="pri" value="med">
@@ -815,11 +822,17 @@ function vContent() {
 }
 
 /* ---------- PIPELINE ---------- */
+/* chase level: 'due' = overdue / today / silent too long, 'soon' = tomorrow, '' = nothing to do yet */
+const urgency = l => !OPEN.includes(l.stage) ? '9999' : l.nextFollowUp || (isStuck(l) ? '0000' : '9998');
+const chaseLevel = l => { if (!OPEN.includes(l.stage)) return ''; const t = today(); if (isStuck(l) || (l.nextFollowUp && l.nextFollowUp <= t)) return 'due'; return l.nextFollowUp === addDays(t, 1) ? 'soon' : ''; };
 function vPipeline() {
   const open = openLeads();
+  const chase = open.filter(l => chaseLevel(l) === 'due'), tmrw = open.filter(l => chaseLevel(l) === 'soon');
+  const bar2 = chase.length ? `<div class="chase-bar">🔴 ${chase.length} ${chase.length === 1 ? 'person needs' : 'people need'} chasing now · ${gbp(sum(chase, 'value'))} waiting on you<span class="sub" style="font-weight:500">Red cards are at the top of each column. Hit <b>Chased</b> after you message them and they drop back for ${S.settings.gap} days.</span></div>`
+    : `<div class="chase-bar ok">✓ Nobody needs chasing right now${tmrw.length ? ` · ${tmrw.length} due tomorrow` : ''}</div>`;
   const cols = STAGES.map(s => {
     let ls = S.leads.filter(l => l.stage === s.id);
-    if (OPEN.includes(s.id)) ls.sort((a, b) => isStuck(b) - isStuck(a) || b.value - a.value);
+    if (OPEN.includes(s.id)) ls.sort((a, b) => urgency(a).localeCompare(urgency(b)) || b.value - a.value);   // chase-now cards on top
     else ls = ls.sort((a, b) => b.history.slice(-1)[0].date.localeCompare(a.history.slice(-1)[0].date));
     const shown = ls.slice(0, 12);
     return `<div class="kcol" data-stage="${s.id}"><div class="khead"><b>${s.label}</b><small>${ls.length} · ${gbp(sum(ls, 'value'))}</small></div>
@@ -827,45 +840,18 @@ function vPipeline() {
       ${ls.length > shown.length ? `<div class="sub" style="text-align:center">+ ${ls.length - shown.length} older</div>` : ''}</div>`;
   }).join('');
   return `<div class="top"><div><h1>Pipeline</h1><p>${open.length} open · ${gbp(sum(open, 'value'))} potential · drag cards between columns</p></div>
-    <div class="acts"><button class="btn" data-act="newLead">+ Add lead</button></div></div><div class="kan">${cols}</div>`;
+    <div class="acts"><button class="btn ghost" data-act="scripts">Message scripts</button><button class="btn" data-act="newLead">+ Add lead</button></div></div>
+    ${bar2}<div class="card" style="margin-bottom:14px;padding-top:4px">${quickAdd()}</div><div class="kan">${cols}</div>`;
 }
 function card(l) {
   const isOpen = OPEN.includes(l.stage), sl = silent(l);
-  return `<div class="lcard ${isStuck(l) ? 'stuck' : ''}" draggable="true" data-lead="${l.id}" data-act="editLead" data-id="${l.id}">
+  return `<div class="lcard ${chaseLevel(l)}" draggable="true" data-lead="${l.id}" data-act="editLead" data-id="${l.id}">
     <div class="t"><b>${esc(l.name)}</b><span class="val">${gbp(l.value)}</span></div>
     <div class="sub">${esc(l.handle || '')}${l.handle ? ' · ' : ''}${esc(l.source)}${l.offer ? ' · ' + esc(offerName(l.offer)) : ''}</div>
     <div class="m">${isOpen ? `<span class="chip ${sl >= S.settings.staleDays ? 'bad' : ''}">${sl === 0 ? 'contacted today' : sl + 'd silent'}</span>` : ''}
-      ${l.nextFollowUp && isOpen ? `<span class="chip ${l.nextFollowUp < today() ? 'bad' : l.nextFollowUp === today() ? 'warn' : ''}">follow-up ${rel(l.nextFollowUp)}</span>` : ''}
+      ${l.nextFollowUp && isOpen ? `<span class="chip ${l.nextFollowUp < today() ? 'bad' : l.nextFollowUp === today() ? 'bad' : l.nextFollowUp === addDays(today(), 1) ? 'warn' : ''}">${l.nextFollowUp <= today() ? '🔴 follow up ' : 'follow up '}${rel(l.nextFollowUp)}</span>` : (isOpen && isStuck(l) ? '<span class="chip bad">🔴 no follow-up date</span>' : '')}
       ${l.stage === 'lost' && l.lostReason ? `<span class="chip bad">${esc(l.lostReason)}</span>` : ''}</div>
-    ${isOpen ? `<div class="a"><button data-act="step" data-id="${l.id}" data-dir="-1" aria-label="Back a stage">‹</button><button class="ch" data-act="chased" data-id="${l.id}">Chased</button><button data-act="step" data-id="${l.id}" data-dir="1" aria-label="Forward a stage">›</button></div>` : ''}</div>`;
-}
-
-/* ---------- FOLLOW-UPS ---------- */
-function fuRow(l) {
-  const sl = silent(l);
-  return `<div class="row"><div class="grow"><b>${esc(l.name)}</b> <span class="chip" data-s="${l.stage}">${stageLabel(l.stage)}</span>
-    <div class="sub">${esc(l.source)} · last contact ${sl === 0 ? 'today' : sl + ' days ago'}${l.nextFollowUp ? ' · due ' + rel(l.nextFollowUp) : ''}</div>
-    ${l.notes ? `<div class="sub" style="color:var(--dim)">${esc(l.notes)}</div>` : ''}</div>
-    <span class="val">${gbp(l.value)}</span>
-    <button class="btn sm good" data-act="chased" data-id="${l.id}">Chased</button>
-    <button class="btn sm ghost" data-act="snooze" data-id="${l.id}" data-n="1">+1d</button>
-    <button class="btn sm ghost" data-act="editLead" data-id="${l.id}">Open</button></div>`;
-}
-function vFollow() {
-  const t = today(), open = openLeads().sort((a, b) => b.value - a.value);
-  const over = open.filter(l => l.nextFollowUp && l.nextFollowUp < t);
-  const todayL = open.filter(l => l.nextFollowUp === t);
-  const soon = open.filter(l => l.nextFollowUp > t && l.nextFollowUp <= addDays(t, 7)).sort((a, b) => a.nextFollowUp.localeCompare(b.nextFollowUp));
-  const nodate = open.filter(l => !l.nextFollowUp);
-  const sec = (cls, title, ls) => ls.length ? `<div class="sec ${cls}">${title} · ${ls.length} · ${gbp(sum(ls, 'value'))}</div>${ls.map(fuRow).join('')}` : '';
-  const stuckVal = sum(stuckLeads(), 'value');
-  return `<div class="top"><div><h1>Follow-ups</h1><p>${stuckVal ? `<b style="color:#FF8B8B">${gbp(stuckVal)}</b> is stuck in conversations right now. Every chase below is potential revenue.` : 'Nothing slipping through the cracks.'}</p></div></div>
-    <div class="grid"><div class="card">
-      <div class="sub" style="margin-bottom:4px">Add everyone you message. They come back here when it's time to chase.</div>${quickAdd()}
-      ${sec('bad', 'Overdue', over)}${sec('gold', 'Due today', todayL)}${sec('', 'Next 7 days', soon)}${sec('', 'No follow-up date set (these go cold)', nodate)}
-      ${open.length ? '' : '<div class="empty">No open leads. Add some from the Pipeline.</div>'}</div>
-    <div class="card"><h2>Message scripts <small>tap to copy</small></h2>
-      ${TEMPLATES.map(([name, txt], i) => `<div class="tmpl"><b>${name}</b><p>${esc(txt)}</p><button class="btn sm ghost" data-act="copyTmpl" data-i="${i}">Copy</button></div>`).join('')}</div></div>`;
+    ${isOpen ? `<div class="a"><button data-act="step" data-id="${l.id}" data-dir="-1" aria-label="Back a stage">‹</button><button class="ch ${chaseLevel(l) ? 'go' : ''}" data-act="chased" data-id="${l.id}">Chased</button><button data-act="step" data-id="${l.id}" data-dir="1" aria-label="Forward a stage">›</button></div>` : ''}</div>`;
 }
 
 /* ---------- CLIENTS ---------- */
@@ -1312,6 +1298,7 @@ document.addEventListener('click', e => {
     case 'bump': bump(el.dataset.k, +el.dataset.n); break;
     case 'range': proofRange = +el.dataset.v; render(); break;
     case 'proofToggle': S.proof[el.dataset.k] = !S.proof[el.dataset.k]; save(); render(); break;
+    case 'scripts': modal('Message scripts <small style="color:var(--muted);font-weight:500">tap to copy</small>', TEMPLATES.map(([name, txt], i) => `<div class="tmpl"><b>${name}</b><p>${esc(txt)}</p><button class="btn sm ghost" data-act="copyTmpl" data-i="${i}">Copy</button></div>`).join('')); break;
     case 'copyTmpl': { const txt = TEMPLATES[+el.dataset.i][1].replace(/\{name\}/g, '[name]'); (navigator.clipboard?.writeText(txt) || Promise.reject()).then(() => toast('Copied — swap [name] for theirs'), () => toast('Copy blocked by browser — select the text instead')); break; }
     case 'clearSample': if (confirm('Delete all sample data and start with a blank dashboard? (Your goal, identity statement and non-negotiables are kept.)')) {
       const n = blank(); n.settings = {...S.settings, sample:false}; n.identity = S.identity; n.mission = S.mission; n.nonneg = S.nonneg; n.schedule = S.schedule; S = n; save(); render(); toast('Fresh start. Add your first lead!'); } break;
@@ -1504,7 +1491,7 @@ document.addEventListener('change', e => {
   r.onload = () => { try { const o = JSON.parse(r.result); if (!Array.isArray(o.leads)) throw 0; S = migrate(o); save(); render(); toast('Backup restored'); } catch (x) { toast('That file is not a valid backup'); } };
   r.readAsText(e.target.files[0]);
 });
-window.addEventListener('hashchange', () => { const v = location.hash.replace('#', ''); if (NAV.some(n => n[0] === v) && v !== view) { view = v; render(); } });
+window.addEventListener('hashchange', () => { const v = location.hash.replace('#', '').replace('followups', 'pipeline'); if (NAV.some(n => n[0] === v) && v !== view) { view = v; render(); } });
 document.title = S.settings.bizName + ' — Command Centre';
 loadUI();
 render();
