@@ -198,6 +198,17 @@ td.r,th.r{text-align:right}
 .idtext.fold{max-height:calc(1.7em * 3);overflow:hidden;position:relative;-webkit-mask-image:linear-gradient(#000 55%,transparent);mask-image:linear-gradient(#000 55%,transparent)}
 .hbtns{display:flex;gap:6px;align-items:center}
 .fbtn{min-width:34px}
+.wkp{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:64px;padding:8px 10px;border:1px solid var(--line);border-radius:11px;background:var(--panel2);font-weight:700;font-size:13px;color:var(--muted)}
+.wkp small{font-weight:600;font-size:11px;color:var(--dim)}
+.wkp.on{border-color:var(--gold);background:rgba(202,163,28,.14);color:var(--gold2)}
+.wkp.now{box-shadow:0 0 0 2px rgba(67,192,138,.45)}
+.lad{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0 14px}
+.lad .st{padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid var(--line);font-weight:600;font-size:13px}
+.lad .st.end{background:rgba(202,163,28,.16);border-color:var(--gold);color:var(--gold2)}
+.lad .ar{color:var(--dim)}
+.snote{white-space:pre-wrap;margin-top:4px;line-height:1.55}
+.qa label{display:block;font-weight:600;font-size:13.5px;margin:12px 0 5px}
+.qa textarea{min-height:76px;font-size:14px;line-height:1.55}
 .ident h2,.mission h2{flex-wrap:wrap;gap:8px}
 .mission{border-color:var(--line2);background:linear-gradient(135deg,rgba(255,255,255,.04),rgba(202,163,28,.08))}
 .crow{display:grid;grid-template-columns:110px 1fr auto;gap:14px;align-items:center;padding:14px 16px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;background:var(--panel2)}
@@ -354,6 +365,20 @@ const defaultSchedule = () => [
 ];
 const EMOTIONS = ['Lost / no purpose','Stuck / unmotivated','Anxious / overwhelmed','Ashamed / guilty','Lonely','Angry / frustrated','Burnt out','Doubting God / faith','Money stress','Addiction / temptation','Relationship pain','Pressure as a man / provider','Hopeful / ready to change','Other'];
 const THEME_SRC = ['Live chat','Instagram DM','TikTok DM','WhatsApp','Webinar','Circle community','Client call','Comment','Other'];
+/* ---- Scale Notes: the 8-week journal that becomes the client playbook ---- */
+const SCALE_TYPES = [['learned','💡 What I learned'],['changed','🔧 What I changed'],['did','✅ What I did'],['well','🟢 What went well'],['bad','🔴 What didn’t work'],['real','✨ Realisation']];
+const PILLARS = [
+  {id:'self', name:'Self', tag:'The founder', mirror:'You can only sell what you believe in.', qs:['Who am I, and what do I stand for? (the identity behind Soul Ark)','What do I believe about myself, selling and money, true or not?','What do I avoid or fear doing in the business, and why?','What does my day look like when I am at my best?']},
+  {id:'product', name:'Product', tag:'The offer', mirror:'The clearer the product, the higher the perceived value.', qs:['In one sentence, what exactly do people get? (Community and BRIDGE)','What is their life like before, and after?','Who is it for, and who is it not for?','Why is it worth the price? What proof do I have?']},
+  {id:'marketing', name:'Marketing', tag:'The message', mirror:'People can only value what they understand.', focus:true, qs:['How does a stranger find out what I sell today?','What is my one-line message, said the way my audience talks?','Which emotions and pain points do I speak to?','What content proves it works (stories, results, testimonials)?']},
+  {id:'sales', name:'Sales', tag:'The conversation', mirror:'Belief turns into action when someone is invited.', qs:['What is my path from first message to purchase?','What objections do I hear most, and what is my honest answer?','How do I follow up without chasing?','What is my conversion at each step (DM, chat, call, sale)?']},
+  {id:'ecosystem', name:'Ecosystem', tag:'How it all connects', mirror:'Belief grows in the right environment.', qs:['What are the parts (content, community, webinar, offers, clients) and how do they connect?','Where does someone go after each step? Where do they drop off?','What makes people stay and refer others?','What is missing?']},
+  {id:'systems', name:'Systems', tag:'The discipline', mirror:'What you repeat is what you become.', qs:['What must happen every day, no matter what?','What do I track, and what does it tell me?','How do I review each week?','What can be automated or handed off?']},
+];
+const defaultScale = () => ({start:'2026-11-09', entries:[], weeks:{}, answers:Object.fromEntries(PILLARS.map(p => [p.id, p.qs.map(() => '')])), playbook:Object.fromEntries(PILLARS.map(p => [p.id, '']))});
+const normScale = o => { const d = defaultScale(), x = {...d, ...(o || {})};
+  x.answers = {...d.answers, ...(x.answers || {})}; PILLARS.forEach(p => { x.answers[p.id] = p.qs.map((_, i) => (x.answers[p.id] || [])[i] || ''); });
+  x.playbook = {...d.playbook, ...(x.playbook || {})}; x.weeks = x.weeks || {}; x.entries = Array.isArray(x.entries) ? x.entries : []; return x; };
 const WEEKLY = [['yt','YouTube videos',3,true], ['clip','Clipping session',1,true], ['sales','Sales days (post + stories)',2,false], ['client','Client story',1,false], ['story','Your own story',1,false]];
 const EXP_CATS = ['Bills','Business & software','Marketing','Food','Transport','Personal','Giving','Other'];
 const defaultNonneg = () => [
@@ -376,7 +401,7 @@ let S = loadState();
 
 function blank() {
   return {settings:{...DEFAULT_SETTINGS, offers:DEFAULT_SETTINGS.offers.map(o => ({...o})), goalDeadline:addDays(today(), 90)}, leads:[], clients:[], tasks:[], payments:[], daily:{}, proof:{},
-    expenses:[], bills:[], income:[], identity:DEFAULT_IDENTITY, mission:DEFAULT_MISSION, nonneg:defaultNonneg(), nonnegVersion:3, nonnegDone:{}, schedule:defaultSchedule(), contentLog:{}, weekly:{}, themes:[]};
+    expenses:[], bills:[], income:[], identity:DEFAULT_IDENTITY, mission:DEFAULT_MISSION, nonneg:defaultNonneg(), nonnegVersion:3, nonnegDone:{}, schedule:defaultSchedule(), contentLog:{}, weekly:{}, themes:[], scale:defaultScale()};
 }
 function loadState() {
   let raw = null;
@@ -405,6 +430,7 @@ function migrate(o) {
   if ((o.nonnegVersion || 0) >= 2 && (o.nonnegVersion || 0) < 3 && !s.nonneg.some(n => n.auto === 'tiktok')) { // one-time: add the TikTok DMs item next to the DMs item, keeping the rest as he left it
     const i = s.nonneg.findIndex(n => n.auto === 'dms'); s.nonneg.splice(i >= 0 ? i + 1 : s.nonneg.length, 0, {id:uid(), auto:'tiktok', title:'Send 20 TikTok DMs'}); s.nonnegVersion = 3; }
   if (s.nonnegVersion < 3) s.nonnegVersion = 3;
+  s.scale = normScale(o.scale); if (!Array.isArray(s.themes)) s.themes = [];
   if (s.settings.goalTitle === 'Hit £5K/month with the 6-week mentorship') s.settings.goalTitle = DEFAULT_SETTINGS.goalTitle; // goal is purchases, not £
   s.leads.forEach(l => { l.history = l.history || [{stage:l.stage, date:l.created || today()}]; l.created = l.created || l.history[0].date; });
   if (s.settings.sample && !(o.expenses && o.expenses.length)) { const sm = sampleData(); s.expenses = sm.expenses; s.bills = sm.bills; s.income = sm.income; } // older sample data had no spending
@@ -423,7 +449,7 @@ function save() {
 function sampleData(keep) {
   const t = today(), s = blank();
   s.settings.sample = true;
-  if (keep) { s.settings = {...keep.settings, sample:true}; s.identity = keep.identity; s.mission = keep.mission; s.nonneg = keep.nonneg; s.schedule = keep.schedule; } // keep the personal bits (goal, identity, non-negotiables)
+  if (keep) { s.settings = {...keep.settings, sample:true}; s.identity = keep.identity; s.mission = keep.mission; s.themes = keep.themes; s.scale = keep.scale; s.nonneg = keep.nonneg; s.schedule = keep.schedule; } // keep the personal bits (goal, identity, non-negotiables)
   const hist = (final, createdAgo, lastAgo, lostFrom) => {
     const path = ORDER.slice(0, ORDER.indexOf(final === 'lost' ? lostFrom : final) + 1);
     const span = Math.max(createdAgo - lastAgo, 0);
@@ -560,6 +586,7 @@ function reached(l, sid) {
 
 /* ================= icons / ui bits ================= */
 const ICON = {
+  book:'<path d="M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3z"/><path d="M5 17a3 3 0 013-3h11"/>',
   film:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/>',
   home:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
   funnel:'<path d="M3 4h18l-7 8v6l-4 2v-8z"/>',
@@ -594,7 +621,7 @@ function closeModal() {
 }
 
 /* ================= views ================= */
-const NAV = [['today','Today','home'],['content','Content schedule','film'],['pipeline','Pipeline','funnel'],['clients','Clients','users'],['tasks','To-do','check'],['revenue','Money','pound'],['proof','Proof Engine','trophy'],['settings','Settings','cog']];
+const NAV = [['today','Today','home'],['content','Content schedule','film'],['scale','Scale Notes','book'],['pipeline','Pipeline','funnel'],['clients','Clients','users'],['tasks','To-do','check'],['revenue','Money','pound'],['proof','Proof Engine','trophy'],['settings','Settings','cog']];
 let view = (location.hash || '').replace('#', '') || 'today';
 if (view === 'followups') view = 'pipeline';   // the Follow-ups tab was folded into the Pipeline
 if (!NAV.some(n => n[0] === view)) view = 'today';
@@ -618,7 +645,7 @@ function renderSide() {
 function render() {
   CUR = S.settings.currency || '$';
   renderSide();
-  const fn = {today:vToday, content:vContent, pipeline:vPipeline, clients:vClients, tasks:vTasks, revenue:vRevenue, proof:vProof, settings:vSettings}[view];
+  const fn = {today:vToday, content:vContent, scale:vScale, pipeline:vPipeline, clients:vClients, tasks:vTasks, revenue:vRevenue, proof:vProof, settings:vSettings}[view];
   const banner = S.settings.sample ? `<div class="banner"><span><b>You're looking at sample data</b> — so you can see how everything works.</span><button class="btn sm" data-act="clearSample">Clear it &amp; start fresh</button></div>` : '';
   $('#main').innerHTML = banner + fn();
   restoreDrafts($('#main'));
@@ -796,6 +823,81 @@ function vToday() {
 
 /* ---------- CONTENT SCHEDULE ---------- */
 let contentWeek = 0;
+let scaleTab = 'journal', scaleWeekSel = 0;   // 0 = follow the current week
+const scaleWeekOf = d => Math.floor(diff(S.scale.start, d) / 7) + 1;
+const curScaleWeek = () => Math.min(8, Math.max(1, scaleWeekOf(today())));
+const scaleWk = () => scaleWeekSel || curScaleWeek();
+const wkStart = n => addDays(S.scale.start, (n - 1) * 7);
+const pName = id => (PILLARS.find(p => p.id === id) || {name:id}).name;
+const tName = id => (SCALE_TYPES.find(t => t[0] === id) || ['', id])[1];
+const ladder = (a, end) => `<div class="lad">${a.map(x => `<span class="st">${x}</span><span class="ar">→</span>`).join('')}<span class="st end">${end}</span></div>`;
+const SCALE_PRINCIPLE = `<div class="card ident" style="margin-bottom:16px"><h2>The principle <small>the whole programme in two lines</small></h2>
+  <div class="sub" style="margin-bottom:2px">A person</div>${ladder(['Understands themselves', 'More intrinsic value', 'More belief in themselves'], 'More willing to act')}
+  <div class="sub" style="margin-bottom:2px">A product or service</div>${ladder(['The client understands it', 'More perceived value', 'More belief it can help them'], 'More likely to buy')}
+  <div class="sub" style="color:var(--text);line-height:1.6">Scale is reflecting a person's inner workings onto the world of business. The business is a mirror of the founder, so each pillar below has a mirror in you.</div></div>`;
+function scaleWeekText(n) {
+  const w = S.scale.weeks[n] || {}, es = S.scale.entries.filter(e => e.week === n);
+  return `WEEK ${n} (${fdate(wkStart(n))} to ${fdate(addDays(wkStart(n), 6))})` + (w.line ? `\nWeek in one line: ${w.line}` : '') + (w.next ? `\nChange for next week: ${w.next}` : '') + '\n' +
+    (es.length ? es.map(e => `- [${tName(e.type).replace(/^\S+\s/, '')}] [${pName(e.pillar)}]${e.star ? ' [PLAYBOOK]' : ''} ${e.text}`).join('\n') : '(no notes yet)');
+}
+function scaleAllText() {
+  const weeks = [...Array(8)].map((_, i) => i + 1).filter(n => S.scale.entries.some(e => e.week === n) || (S.scale.weeks[n] || {}).line || (S.scale.weeks[n] || {}).next);
+  const ans = PILLARS.map(p => { const a = p.qs.map((q, i) => S.scale.answers[p.id][i] ? `Q: ${q}\nA: ${S.scale.answers[p.id][i]}` : '').filter(Boolean); return a.length ? `## ${p.name} (${p.tag})\n${a.join('\n')}` : ''; }).filter(Boolean);
+  return `SOUL ARK SCALE: my 8-week journal\nThe principle: a person who understands themselves has more intrinsic value, more belief and is more willing to act. A client who understands a product sees more value, more belief it can help, and is more likely to buy. Scale is reflecting a person's inner workings onto business. Pillars: Self, Product, Marketing, Sales, Ecosystem, Systems. Focus of these 8 weeks: Marketing.\n\n` +
+    (weeks.length ? weeks.map(scaleWeekText).join('\n\n') : '(no journal notes yet)') + (ans.length ? `\n\nMY PILLAR ANSWERS\n${ans.join('\n\n')}` : '') +
+    `\n\nPlease turn this into: 1) clear bullet points per pillar, 2) patterns and lessons you notice, 3) a first draft of the step-by-step plan I would give a coach who buys the Scale programme. Keep my wording where it is strong.`;
+}
+function playbookText() {
+  return '# Soul Ark Scale: playbook draft\n\n' + PILLARS.map(p => { const st = S.scale.entries.filter(e => e.pillar === p.id && e.star), own = (S.scale.playbook[p.id] || '').trim();
+    return `## ${p.name}: ${p.tag}\n` + (own ? own + '\n' : '') + (st.length ? st.map(e => `- ${e.text} (week ${e.week})`).join('\n') : (own ? '' : '(nothing yet)')); }).join('\n\n');
+}
+function vScale() {
+  const t = today(), n = scaleWk(), d0 = diff(t, S.scale.start), es = S.scale.entries;
+  const tabs = [['journal', 'Journal'], ['pillars', 'The pillars'], ['playbook', 'Playbook']];
+  const head = `<div class="top"><div><h1>Scale Notes</h1><p>Everything you learn while proving this. Starred notes become the playbook your coaching clients get.</p></div>
+    <div class="acts"><span class="seg">${tabs.map(([k, l]) => `<button class="${scaleTab === k ? 'on' : ''}" data-act="scaleTab" data-t="${k}">${l}</button>`).join('')}</span></div></div>`;
+  if (scaleTab === 'pillars') return head + SCALE_PRINCIPLE + `<div class="sub" style="margin:-4px 0 14px">Fill these in for yourself first. Your answers are saved as you type. Marketing is the focus of these 8 weeks.</div>
+    <div class="cgrid">${PILLARS.map(p => { const c = es.filter(e => e.pillar === p.id).length;
+      return `<div class="card qa"><h2><span>${p.name} <span class="sub">· ${p.tag}</span></span>${p.focus ? '<span class="chip warn">Focus now</span>' : ''}</h2>
+        <div class="sub" style="color:var(--gold2)">${p.mirror}</div>
+        ${p.qs.map((q, i) => `<label for="q-${p.id}-${i}">${q}</label><textarea id="q-${p.id}-${i}" data-sq="${p.id}:${i}" placeholder="Your answer…">${esc(S.scale.answers[p.id][i])}</textarea>`).join('')}
+        <div class="sub" style="margin-top:10px">${c} journal note${c === 1 ? '' : 's'} tagged ${p.name}</div></div>`; }).join('')}</div>`;
+  if (scaleTab === 'playbook') { const starred = es.filter(e => e.star).length;
+    return head + `<div class="card" style="margin-bottom:16px"><h2>How this turns into a playbook</h2><div class="sub" style="color:var(--text);line-height:1.7">1. Write in the Journal every day. 2. Star (★) the notes that are real lessons for a client. 3. Once a week, press <b>Copy everything for Claude</b> and paste it to me. I turn it into clean bullets and a plan. 4. Paste the polished bullets back into the pillar boxes below. After 8 weeks this page is the draft playbook.</div>
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="copyScaleAll">Copy everything for Claude</button><button class="btn ghost" data-act="copyPlaybook">Copy playbook draft</button><span class="sub" style="align-self:center">${starred} starred note${starred === 1 ? '' : 's'} so far</span></div></div>
+      <div class="cgrid">${PILLARS.map(p => { const st = es.filter(e => e.pillar === p.id && e.star);
+        return `<div class="card qa"><h2><span>${p.name} <span class="sub">· ${p.tag}</span></span>${p.focus ? '<span class="chip warn">Focus now</span>' : ''}</h2>
+          ${st.length ? st.map(e => `<div class="row"><div class="grow"><div class="snote" style="margin:0">${esc(e.text)}</div><div class="sub">Week ${e.week} · ${tName(e.type)}</div></div><button class="btn sm good" data-act="sStar" data-id="${e.id}" title="Un-star">★</button></div>`).join('') : '<div class="sub">Star notes in the Journal and they collect here.</div>'}
+          <label for="pb-${p.id}">Playbook bullets (polished)</label><textarea id="pb-${p.id}" data-spb="${p.id}" placeholder="Bullet points for clients…" style="min-height:110px">${esc(S.scale.playbook[p.id])}</textarea></div>`; }).join('')}</div>`; }
+  /* journal */
+  const w = S.scale.weeks[n] || {}, wes = es.filter(e => e.week === n), cw = curScaleWeek();
+  const status = d0 > 0 ? `<div class="chase-bar ok" style="margin-bottom:14px">Week 1 starts ${rel(S.scale.start)} (${fdate(S.scale.start)}). You can already write notes.</div>` : '';
+  const pills = [...Array(8)].map((_, i) => i + 1).map(k => { const c = es.filter(e => e.week === k).length;
+    return `<button class="wkp ${k === n ? 'on' : ''} ${d0 <= 0 && k === cw ? 'now' : ''}" data-act="scaleWeek" data-n="${k}">Week ${k}<small>${c ? c + ' note' + (c === 1 ? '' : 's') : fdate(wkStart(k)).replace(/^\w+ /, '')}</small></button>`; }).join('');
+  return head + status + `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">${pills}</div>
+  <div class="card"><h2>Week ${n} <small>${fdate(wkStart(n))} to ${fdate(addDays(wkStart(n), 6))}${n === 1 ? ' · focus: marketing' : ''}</small></h2>
+    <form data-form="scalenote" class="inline" style="flex-wrap:wrap;gap:8px">
+      <select name="type" aria-label="Type" style="flex:1;min-width:170px">${SCALE_TYPES.map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select>
+      <select name="pillar" aria-label="Pillar" style="flex:1;min-width:130px">${PILLARS.map(p => `<option value="${p.id}" ${p.focus ? 'selected' : ''}>${p.name}</option>`).join('')}</select>
+      <textarea name="text" placeholder="What did you learn, change, do, or realise?" required rows="2" style="flex:3 1 100%;min-height:70px"></textarea>
+      <button class="btn">Add to week ${n}</button></form>
+    ${SCALE_TYPES.map(([k, l]) => { const g = wes.filter(e => e.type === k).reverse();
+      return g.length ? `<div class="sec" style="margin-top:16px">${l} · ${g.length}</div>${g.map(e => `<div class="row"><div class="grow"><span class="chip">${pName(e.pillar)}</span> <span class="sub">${fdate(e.date)}</span><div class="snote">${esc(e.text)}</div></div>
+        <button class="btn sm ${e.star ? 'good' : 'ghost'}" data-act="sStar" data-id="${e.id}" title="Star it if a client should learn this">${e.star ? '★ Playbook' : '☆ Playbook'}</button>
+        <button class="btn sm ghost" data-act="sEdit" data-id="${e.id}">Edit</button><button class="x" data-act="sDel" data-id="${e.id}" aria-label="Delete">×</button></div>`).join('')}` : ''; }).join('') || '<div class="empty" style="margin-top:14px">Nothing in week ' + n + ' yet. Write what you learn, what you change, what worked and what did not.</div>'}</div>
+  <div class="card" style="margin-top:16px"><h2>Week ${n} wrap-up</h2>
+    <label class="fld"><span>The week in one line</span><input data-swk="${n}:line" value="${esc(w.line || '')}" placeholder="e.g. People still do not know what BRIDGE is"></label>
+    <label class="fld"><span>The one thing I will change next week</span><input data-swk="${n}:next" value="${esc(w.next || '')}" placeholder="e.g. Put what you get in the first line of every reel"></label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm ghost" data-act="copyScaleWeek" data-n="${n}">Copy week ${n} for Claude</button><button class="btn sm ghost" data-act="copyScaleAll">Copy everything for Claude</button></div></div>`;
+}
+function scaleEditForm(id) {
+  const e = S.scale.entries.find(x => x.id === id); if (!e) return;
+  modal('Edit note', `<form data-form="scaleedit" data-id="${id}">
+    <div class="two">${sel('Type', 'type', SCALE_TYPES, e.type)}${sel('Pillar', 'pillar', PILLARS.map(p => [p.id, p.name]), e.pillar)}</div>
+    ${sel('Week', 'week', [1,2,3,4,5,6,7,8].map(k => [k, 'Week ' + k]), e.week)}
+    <label class="fld"><span>Note</span><textarea name="text" style="min-height:140px" required>${esc(e.text)}</textarea></label>
+    <div class="mfoot"><button class="btn">Save</button></div></form>`);
+}
 const schedFor = d => S.schedule.find(x => x.d === dow(d)) || {d:dow(d), tag:'rest', piece:'', stories:''};
 function tickBtns(d) {
   const l = S.contentLog[d] || {};
@@ -1333,6 +1435,12 @@ document.addEventListener('click', e => {
       save(); render(); break;
     }
     case 'toggleTask': toggleTask(id); break;
+    case 'scaleTab': scaleTab = el.dataset.t; render(); break;
+    case 'scaleWeek': scaleWeekSel = +el.dataset.n; render(); break;
+    case 'sStar': { const x = S.scale.entries.find(y => y.id === id); if (x) { x.star = !x.star; save(); render(); } break; }
+    case 'sDel': if (confirm('Delete this note?')) { S.scale.entries = S.scale.entries.filter(x => x.id !== id); save(); render(); } break;
+    case 'sEdit': scaleEditForm(id); break;
+    case 'copyScaleWeek': case 'copyScaleAll': case 'copyPlaybook': { const txt = a === 'copyScaleWeek' ? scaleWeekText(+el.dataset.n) : a === 'copyPlaybook' ? playbookText() : scaleAllText(); (navigator.clipboard?.writeText(txt) || Promise.reject()).then(() => toast('Copied. Paste it to Claude'), () => toast('Copy blocked by the browser')); break; }
     case 'themeMade': { const x = S.themes.find(y => y.id === id); if (x) { x.made = !x.made; save(); render(); } break; }
     case 'delTheme': S.themes = S.themes.filter(x => x.id !== id); save(); render(); break;
     case 'copyThemes': { const txt = themesText(addDays(weekStart(today()), contentWeek * 7)); (navigator.clipboard?.writeText(txt) || Promise.reject()).then(() => toast('Copied. Paste it anywhere'), () => toast('Copy blocked by the browser')); break; }
@@ -1345,7 +1453,7 @@ document.addEventListener('click', e => {
     case 'scripts': modal('Message scripts <small style="color:var(--muted);font-weight:500">tap to copy</small>', TEMPLATES.map(([name, txt], i) => `<div class="tmpl"><b>${name}</b><p>${esc(txt)}</p><button class="btn sm ghost" data-act="copyTmpl" data-i="${i}">Copy</button></div>`).join('')); break;
     case 'copyTmpl': { const txt = TEMPLATES[+el.dataset.i][1].replace(/\{name\}/g, '[name]'); (navigator.clipboard?.writeText(txt) || Promise.reject()).then(() => toast('Copied — swap [name] for theirs'), () => toast('Copy blocked by browser — select the text instead')); break; }
     case 'clearSample': if (confirm('Delete all sample data and start with a blank dashboard? (Your goal, identity statement and non-negotiables are kept.)')) {
-      const n = blank(); n.settings = {...S.settings, sample:false}; n.identity = S.identity; n.mission = S.mission; n.nonneg = S.nonneg; n.schedule = S.schedule; S = n; save(); render(); toast('Fresh start. Add your first lead!'); } break;
+      const n = blank(); n.settings = {...S.settings, sample:false}; n.identity = S.identity; n.mission = S.mission; n.themes = S.themes; n.scale = S.scale; n.nonneg = S.nonneg; n.schedule = S.schedule; S = n; save(); render(); toast('Fresh start. Add your first lead!'); } break;
     case 'loadSample': if (confirm('Replace everything with sample data? (Your goal, identity statement and non-negotiables are kept.)')) { S = sampleData(S); save(); render(); } break;
     case 'wipe': if (confirm('Delete ALL your data? Export a backup first if you are unsure. This cannot be undone.')) { S = blank(); save(); render(); toast('Everything deleted'); } break;
     case 'export': {
@@ -1371,6 +1479,13 @@ document.addEventListener('submit', e => {
       S.leads.push({id:uid(), name:f.name.trim(), handle:f.handle.trim(), source:f.source, stage:f.stage, offer:f.offer || '', value:+f.value || 0, lastContact:f.lastContact || t, nextFollowUp:f.nextFollowUp, notes:f.notes, created:t, history:[{stage:f.stage, date:t}]});
       save(); closeModal(); render(); toast('Lead added');
     }
+  } else if (kind === 'scalenote') {
+    S.scale.entries.push({id:uid(), week:scaleWk(), date:t, type:f.type, pillar:f.pillar, text:f.text.trim(), star:false});
+    save(); render(); toast('Added to week ' + scaleWk());
+    const q = document.querySelector('form[data-form=scalenote] textarea'); if (q) q.focus();
+  } else if (kind === 'scaleedit') {
+    const e = S.scale.entries.find(x => x.id === id); if (e) Object.assign(e, {type:f.type, pillar:f.pillar, week:+f.week, text:f.text.trim()});
+    save(); closeModal(); render();
   } else if (kind === 'theme') {
     S.themes.push({id:uid(), date:f.date || t, emotion:f.emotion, source:f.source, pain:f.pain.trim(), idea:(f.idea || '').trim(), made:false});
     save(); render(); toast('Logged');
@@ -1468,17 +1583,18 @@ function restoreDrafts(root) {
   });
 }
 /* remember which pop-up is open, so a refresh reopens it with your text still in it */
-['leadForm','clientForm','payForm','expenseForm','billForm','goalForm','incomeForm','identityForm','missionForm','dayForm','winForm','lostForm'].forEach(name => {
+['leadForm','scaleEditForm','clientForm','payForm','expenseForm','billForm','goalForm','incomeForm','identityForm','missionForm','dayForm','winForm','lostForm'].forEach(name => {
   const orig = window[name];
   window[name] = function (id) { drafts.__modal = {name, id}; saveDrafts(); return orig(id); };
 });
-function saveUI() { try { localStorage.setItem(UI_KEY, JSON.stringify({view, taskFilter, proofRange, spendMode, folded})); } catch (e) {} }
+function saveUI() { try { localStorage.setItem(UI_KEY, JSON.stringify({view, taskFilter, proofRange, spendMode, folded, scaleTab})); } catch (e) {} }
 function loadUI() {
   let ui = {}; try { ui = JSON.parse(localStorage.getItem(UI_KEY)) || {}; } catch (e) {}
   if (!location.hash && NAV.some(n => n[0] === ui.view)) view = ui.view;
   if (typeof ui.taskFilter === 'string' && ['All', ...CATS].includes(ui.taskFilter)) taskFilter = ui.taskFilter;
   if ([0, 30, 90].includes(ui.proofRange)) proofRange = ui.proofRange;
   if (ui.spendMode === 'all' || ui.spendMode === 'everyday') spendMode = ui.spendMode;
+  if (['journal', 'pillars', 'playbook'].includes(ui.scaleTab)) scaleTab = ui.scaleTab;
   if (ui.folded && typeof ui.folded === 'object') folded = {identity: !!ui.folded.identity, mission: !!ui.folded.mission};
 }
 let scrollT;
@@ -1507,6 +1623,12 @@ document.addEventListener('change', e => {
   }
 });
 
+document.addEventListener('input', e => {   // Scale Notes boxes save as you type
+  const d = e.target.dataset; if (!d) return;
+  if (d.sq) { const [p, i] = d.sq.split(':'); S.scale.answers[p][+i] = e.target.value; save(); }
+  else if (d.spb) { S.scale.playbook[d.spb] = e.target.value; save(); }
+  else if (d.swk) { const [n, k] = d.swk.split(':'); (S.scale.weeks[n] = S.scale.weeks[n] || {})[k] = e.target.value; save(); }
+});
 document.addEventListener('input', e => {
   const el = e.target, id = el.dataset && el.dataset.nnTitle; if (!id) return;
   const n = S.nonneg.find(x => x.id === id); if (n) { n.title = el.value; save(); }   // saved as you type
