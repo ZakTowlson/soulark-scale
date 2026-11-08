@@ -206,6 +206,12 @@ td.r,th.r{text-align:right}
 .lad .st{padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid var(--line);font-weight:600;font-size:13px}
 .lad .st.end{background:rgba(202,163,28,.16);border-color:var(--gold);color:var(--gold2)}
 .lad .ar{color:var(--dim)}
+.scorerow{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+.scorerow button{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--muted);font-weight:700;font-size:12px;padding:0}
+.scorerow button:hover{border-color:var(--line2)}
+.scorerow button.on[data-sv=lo]{background:rgba(238,98,98,.22);border-color:var(--bad);color:#FF9B9B}
+.scorerow button.on[data-sv=mid]{background:rgba(242,169,59,.2);border-color:var(--warn);color:var(--warn)}
+.scorerow button.on[data-sv=hi]{background:rgba(67,192,138,.2);border-color:var(--good);color:var(--good)}
 .snote{white-space:pre-wrap;margin-top:4px;line-height:1.55}
 .qa label{display:block;font-weight:600;font-size:13.5px;margin:12px 0 5px}
 .qa textarea{min-height:76px;font-size:14px;line-height:1.55}
@@ -368,16 +374,19 @@ const THEME_SRC = ['Live chat','Instagram DM','TikTok DM','WhatsApp','Webinar','
 /* ---- Scale Notes: the 8-week journal that becomes the client playbook ---- */
 const SCALE_TYPES = [['learned','💡 What I learned'],['changed','🔧 What I changed'],['did','✅ What I did'],['well','🟢 What went well'],['bad','🔴 What didn’t work'],['real','✨ Realisation']];
 const PILLARS = [
-  {id:'self', name:'Self', tag:'The founder', mirror:'You can only sell what you believe in.', qs:['Who am I, and what do I stand for? (the identity behind Soul Ark)','What do I believe about myself, selling and money, true or not?','What do I avoid or fear doing in the business, and why?','What does my day look like when I am at my best?']},
-  {id:'product', name:'Product', tag:'The offer', mirror:'The clearer the product, the higher the perceived value.', qs:['In one sentence, what exactly do people get? (Community and BRIDGE)','What is their life like before, and after?','Who is it for, and who is it not for?','Why is it worth the price? What proof do I have?']},
-  {id:'marketing', name:'Marketing', tag:'The message', mirror:'People can only value what they understand.', focus:true, qs:['How does a stranger find out what I sell today?','What is my one-line message, said the way my audience talks?','Which emotions and pain points do I speak to?','What content proves it works (stories, results, testimonials)?']},
-  {id:'sales', name:'Sales', tag:'The conversation', mirror:'Belief turns into action when someone is invited.', qs:['What is my path from first message to purchase?','What objections do I hear most, and what is my honest answer?','How do I follow up without chasing?','What is my conversion at each step (DM, chat, call, sale)?']},
-  {id:'ecosystem', name:'Ecosystem', tag:'How it all connects', mirror:'Belief grows in the right environment.', qs:['What are the parts (content, community, webinar, offers, clients) and how do they connect?','Where does someone go after each step? Where do they drop off?','What makes people stay and refer others?','What is missing?']},
-  {id:'systems', name:'Systems', tag:'The discipline', mirror:'What you repeat is what you become.', qs:['What must happen every day, no matter what?','What do I track, and what does it tell me?','How do I review each week?','What can be automated or handed off?']},
+  {id:'self', subject:'myself', name:'Self', tag:'The founder', mirror:'You can only sell what you believe in.', qs:['Who am I, and what do I stand for? (the identity behind Soul Ark)','What do I believe about myself, selling and money, true or not?','What do I avoid or fear doing in the business, and why?','What does my day look like when I am at my best?']},
+  {id:'product', subject:'my offer', name:'Product', tag:'The offer', mirror:'The clearer the product, the higher the perceived value.', qs:['In one sentence, what exactly do people get? (Community and BRIDGE)','What is their life like before, and after?','Who is it for, and who is it not for?','Why is it worth the price? What proof do I have?']},
+  {id:'marketing', subject:'how I get my message out', name:'Marketing', tag:'The message', mirror:'People can only value what they understand.', focus:true, qs:['How does a stranger find out what I sell today?','What is my one-line message, said the way my audience talks?','Which emotions and pain points do I speak to?','What content proves it works (stories, results, testimonials)?']},
+  {id:'sales', subject:'my sales conversations', name:'Sales', tag:'The conversation', mirror:'Belief turns into action when someone is invited.', qs:['What is my path from first message to purchase?','What objections do I hear most, and what is my honest answer?','How do I follow up without chasing?','What is my conversion at each step (DM, chat, call, sale)?']},
+  {id:'ecosystem', subject:'how everything connects', name:'Ecosystem', tag:'How it all connects', mirror:'Belief grows in the right environment.', qs:['What are the parts (content, community, webinar, offers, clients) and how do they connect?','Where does someone go after each step? Where do they drop off?','What makes people stay and refer others?','What is missing?']},
+  {id:'systems', subject:'my daily systems', name:'Systems', tag:'The discipline', mirror:'What you repeat is what you become.', qs:['What must happen every day, no matter what?','What do I track, and what does it tell me?','How do I review each week?','What can be automated or handed off?']},
 ];
-const defaultScale = () => ({start:'2026-11-09', entries:[], weeks:{}, answers:Object.fromEntries(PILLARS.map(p => [p.id, p.qs.map(() => '')])), playbook:Object.fromEntries(PILLARS.map(p => [p.id, '']))});
+const RUNGS = ['understand', 'value', 'believe', 'act'];
+const blankLadder = () => ({understand:'', value:'', believe:'', act:'', change:'', biz:'', sc:{understand:0, value:0, believe:0, act:0}});
+const defaultScale = () => ({start:'2026-11-09', entries:[], weeks:{}, ladder:Object.fromEntries(PILLARS.map(p => [p.id, blankLadder()])), answers:Object.fromEntries(PILLARS.map(p => [p.id, p.qs.map(() => '')])), playbook:Object.fromEntries(PILLARS.map(p => [p.id, '']))});
 const normScale = o => { const d = defaultScale(), x = {...d, ...(o || {})};
   x.answers = {...d.answers, ...(x.answers || {})}; PILLARS.forEach(p => { x.answers[p.id] = p.qs.map((_, i) => (x.answers[p.id] || [])[i] || ''); });
+  x.ladder = x.ladder || {}; PILLARS.forEach(p => { const l = x.ladder[p.id] || {}; x.ladder[p.id] = {...blankLadder(), ...l, sc:{...blankLadder().sc, ...(l.sc || {})}}; });
   x.playbook = {...d.playbook, ...(x.playbook || {})}; x.weeks = x.weeks || {}; x.entries = Array.isArray(x.entries) ? x.entries : []; return x; };
 const WEEKLY = [['yt','YouTube videos',3,true], ['clip','Clipping session',1,true], ['sales','Sales days (post + stories)',2,false], ['client','Client story',1,false], ['story','Your own story',1,false]];
 const EXP_CATS = ['Bills','Business & software','Marketing','Food','Transport','Personal','Giving','Other'];
@@ -823,7 +832,7 @@ function vToday() {
 
 /* ---------- CONTENT SCHEDULE ---------- */
 let contentWeek = 0;
-let scaleTab = 'journal', scaleWeekSel = 0;   // 0 = follow the current week
+let scaleTab = 'journal', scaleWeekSel = 0, scalePillar = 'self';   // 0 = follow the current week
 const scaleWeekOf = d => Math.floor(diff(S.scale.start, d) / 7) + 1;
 const curScaleWeek = () => Math.min(8, Math.max(1, scaleWeekOf(today())));
 const scaleWk = () => scaleWeekSel || curScaleWeek();
@@ -837,17 +846,38 @@ const SCALE_PRINCIPLE = `<div class="card ident" style="margin-bottom:16px"><h2>
   <div class="sub" style="margin-bottom:2px">A person</div>${ladder(['Understands themselves', 'More intrinsic value', 'More belief in themselves'], 'More willing to act')}
   <div class="sub" style="margin-bottom:2px">A product or service</div>${ladder(['The client understands it', 'More perceived value', 'More belief it can help them'], 'More likely to buy')}
   <div class="sub" style="color:var(--text);line-height:1.6">Scale is reflecting a person's inner workings onto the world of business. The business is a mirror of the founder, so each pillar below has a mirror in you.</div></div>`;
+const RUNG_NAME = {understand:'Understanding', value:'Value', believe:'Belief', act:'Action'};
+function rungPrompts(p) {
+  const me = p.id === 'self', sub = p.subject;
+  return me ? {
+    understand:['1 · Understand', 'What do I honestly understand about myself? My strengths, my patterns, what drives me, what holds me back.'],
+    value:['2 · Intrinsic value', 'What does that mean for my value? Where do I undervalue myself, and where am I fully standing in it?'],
+    believe:['3 · Belief', 'What does that make me believe about myself, about selling and about asking for money?'],
+    act:['4 · Willing to act', 'How willing am I to act because of it? What do I do, and what do I avoid?']
+  } : {
+    understand:['1 · Understand', `How clearly do I understand ${sub}, and how clearly can my audience understand it?`],
+    value:['2 · Perceived value', 'What does that mean for how much it is worth in their eyes? Do they see it?'],
+    believe:['3 · Belief', 'Do they believe it can help them? Why, or why not?'],
+    act:['4 · Likely to act', 'What does that make them do, or not do? (reply, join, book, buy, share)']
+  };
+}
+const weakest = id => { const sc = S.scale.ladder[id].sc, r = RUNGS.filter(k => sc[k] > 0).sort((a, b) => sc[a] - sc[b])[0]; return r ? {k:r, n:sc[r]} : null; };
 function scaleWeekText(n) {
   const w = S.scale.weeks[n] || {}, es = S.scale.entries.filter(e => e.week === n);
   return `WEEK ${n} (${fdate(wkStart(n))} to ${fdate(addDays(wkStart(n), 6))})` + (w.line ? `\nWeek in one line: ${w.line}` : '') + (w.next ? `\nChange for next week: ${w.next}` : '') + '\n' +
     (es.length ? es.map(e => `- ${SCALE_TYPES.some(t => t[0] === e.type) ? `[${tName(e.type).replace(/^\S+\s/, '')}] ` : ''}${e.pillar ? `[${pName(e.pillar)}] ` : ''}${e.star ? '[PLAYBOOK] ' : ''}${e.text}`).join('\n') : '(no notes yet)');
 }
+function ladderText() {
+  const out = PILLARS.map(p => { const l = S.scale.ladder[p.id], r = rungPrompts(p), has = RUNGS.some(k => l[k] || l.sc[k]) || l.change || l.biz; if (!has) return '';
+    return `## ${p.name} (${p.tag})\n` + RUNGS.map(k => (l[k] || l.sc[k]) ? `${r[k][0]}${l.sc[k] ? ` [${l.sc[k]}/10]` : ''}: ${l[k] || '(no answer)'}` : '').filter(Boolean).join('\n') + (l.change ? `\nWhat needs to change: ${l.change}` : '') + (l.biz ? `\nHow I will reflect it in the business: ${l.biz}` : ''); }).filter(Boolean);
+  return out.length ? `\n\nTHE LADDER (understand, value, belief, action; scores 1-10 where 10 is strong)\n${out.join('\n\n')}` : '';
+}
 function scaleAllText() {
   const weeks = [...Array(8)].map((_, i) => i + 1).filter(n => S.scale.entries.some(e => e.week === n) || (S.scale.weeks[n] || {}).line || (S.scale.weeks[n] || {}).next);
   const ans = PILLARS.map(p => { const a = p.qs.map((q, i) => S.scale.answers[p.id][i] ? `Q: ${q}\nA: ${S.scale.answers[p.id][i]}` : '').filter(Boolean); return a.length ? `## ${p.name} (${p.tag})\n${a.join('\n')}` : ''; }).filter(Boolean);
   return `SOUL ARK SCALE: my 8-week journal\nThe principle: a person who understands themselves has more intrinsic value, more belief and is more willing to act. A client who understands a product sees more value, more belief it can help, and is more likely to buy. Scale is reflecting a person's inner workings onto business. Pillars: Self, Product, Marketing, Sales, Ecosystem, Systems. Focus of these 8 weeks: Marketing.\n\n` +
-    (weeks.length ? weeks.map(scaleWeekText).join('\n\n') : '(no journal notes yet)') + (ans.length ? `\n\nMY PILLAR ANSWERS\n${ans.join('\n\n')}` : '') +
-    `\n\nPlease turn this into: 1) clear bullet points per pillar, 2) patterns and lessons you notice, 3) a first draft of the step-by-step plan I would give a coach who buys the Scale programme. Keep my wording where it is strong.`;
+    (weeks.length ? weeks.map(scaleWeekText).join('\n\n') : '(no journal notes yet)') + (ans.length ? `\n\nMY PILLAR ANSWERS (first version)\n${ans.join('\n\n')}` : '') + ladderText() +
+    `\n\nPlease: find the weakest rung of the ladder for me (Self) and for the business, explain how my inner state is showing up in the business, and say what needs to change. Then turn everything into: 1) clear bullet points per pillar, 2) patterns and lessons you notice, 3) a first draft of the step-by-step plan I would give a coach who buys the Scale programme. Keep my wording where it is strong.`;
 }
 function playbookText() {
   const loose = S.scale.entries.filter(e => e.star && !PILLARS.some(p => p.id === e.pillar));
@@ -859,12 +889,23 @@ function vScale() {
   const tabs = [['journal', 'Journal'], ['pillars', 'The pillars'], ['playbook', 'Playbook']];
   const head = `<div class="top"><div><h1>Scale Notes</h1><p>Everything you learn while proving this. Starred notes become the playbook your coaching clients get.</p></div>
     <div class="acts"><span class="seg">${tabs.map(([k, l]) => `<button class="${scaleTab === k ? 'on' : ''}" data-act="scaleTab" data-t="${k}">${l}</button>`).join('')}</span></div></div>`;
-  if (scaleTab === 'pillars') return head + SCALE_PRINCIPLE + `<div class="sub" style="margin:-4px 0 14px">Fill these in for yourself first. Your answers are saved as you type. Marketing is the focus of these 8 weeks.</div>
-    <div class="cgrid">${PILLARS.map(p => { const c = es.filter(e => e.pillar === p.id).length;
-      return `<div class="card qa"><h2><span>${p.name} <span class="sub">· ${p.tag}</span></span>${p.focus ? '<span class="chip warn">Focus now</span>' : ''}</h2>
-        <div class="sub" style="color:var(--gold2)">${p.mirror}</div>
-        ${p.qs.map((q, i) => `<label for="q-${p.id}-${i}">${q}</label><textarea id="q-${p.id}-${i}" data-sq="${p.id}:${i}" placeholder="Your answer…">${esc(S.scale.answers[p.id][i])}</textarea>`).join('')}
-        </div>`; }).join('')}</div>`;
+  if (scaleTab === 'pillars') {
+    const p = PILLARS.find(x => x.id === scalePillar) || PILLARS[0], l = S.scale.ladder[p.id], r = rungPrompts(p), old = S.scale.answers[p.id].map((a, i) => a ? [p.qs[i], a] : null).filter(Boolean);
+    const all = PILLARS.map(q => ({q, w:weakest(q.id)})), worst = all.filter(x => x.w).sort((a, b) => a.w.n - b.w.n)[0];
+    const lad = p.id === 'self' ? ladder(['Understand myself', 'Intrinsic value', 'Belief in myself'], 'Willing to act') : ladder(['They understand it', 'Perceived value', 'Belief it can help'], 'Likely to act');
+    return head + SCALE_PRINCIPLE + `<div class="sub" style="margin:-4px 0 12px">Work down the ladder for yourself first (Self), then ask the same questions of the business. Score each step 1 to 10 (10 = strong). The lowest score is where to work first.</div>
+    ${worst ? `<div class="chase-bar ok" style="margin-bottom:12px">Weakest step so far: <b style="color:var(--text)">${worst.q.name} · ${RUNG_NAME[worst.w.k]} · ${worst.w.n}/10</b></div>` : ''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">${all.map(({q, w}) => `<button class="wkp ${q.id === p.id ? 'on' : ''}" data-act="scalePillar" data-p="${q.id}" style="min-width:110px">${q.name}<small>${w ? RUNG_NAME[w.k] + ' ' + w.n + '/10' : q.focus ? 'Focus now' : 'not started'}</small></button>`).join('')}</div>
+    <div class="card"><h2><span>${p.name} <span class="sub">· ${p.tag}</span></span>${p.focus ? '<span class="chip warn">Focus now</span>' : ''}</h2>
+      <div class="sub" style="color:var(--gold2);margin-bottom:6px">${p.mirror}</div>${lad}
+      <div class="cgrid">${RUNGS.map(k => `<div class="qa"><label for="l-${p.id}-${k}" style="margin-top:0">${r[k][0]}</label><div class="sub" style="margin-bottom:6px">${r[k][1]}</div>
+        <textarea id="l-${p.id}-${k}" data-lad="${p.id}:${k}" placeholder="Your answer…">${esc(l[k])}</textarea>
+        <div class="scorerow" role="group" aria-label="Score 1 to 10">${[1,2,3,4,5,6,7,8,9,10].map(n => `<button class="${l.sc[k] === n ? 'on' : ''}" data-sv="${n <= 3 ? 'lo' : n <= 6 ? 'mid' : 'hi'}" data-act="ladScore" data-p="${p.id}" data-k="${k}" data-n="${n}" aria-label="Score ${n}">${n}</button>`).join('')}</div></div>`).join('')}</div>
+      <div class="cgrid" style="margin-top:14px"><div class="qa"><label for="l-${p.id}-change" style="margin-top:0">What needs to change?</label><div class="sub" style="margin-bottom:6px">${p.id === 'self' ? 'Looking at the weakest step above, what has to change in me?' : 'Looking at the weakest step above, what has to change here?'}</div><textarea id="l-${p.id}-change" data-lad="${p.id}:change" placeholder="Your answer…">${esc(l.change)}</textarea></div>
+        <div class="qa"><label for="l-${p.id}-biz" style="margin-top:0">${p.id === 'self' ? 'How will that show up in the business?' : 'What will I do about it in the next 7 days?'}</label><div class="sub" style="margin-bottom:6px">${p.id === 'self' ? 'Mirror it: how does fixing this in me change what I do in marketing, product and sales?' : 'One clear action, then it goes in your journal.'}</div><textarea id="l-${p.id}-biz" data-lad="${p.id}:biz" placeholder="Your answer…">${esc(l.biz)}</textarea>
+          <div style="margin-top:8px"><button class="btn sm ghost" data-act="ladAdd" data-p="${p.id}">Add to week ${scaleWk()} journal</button></div></div></div>
+      ${old.length ? `<details style="margin-top:16px"><summary class="sub" style="cursor:pointer">Your earlier answers for ${p.name} (${old.length})</summary>${old.map(([q, a]) => `<div style="margin-top:10px"><div class="sub">${esc(q)}</div><div class="snote">${esc(a)}</div></div>`).join('')}</details>` : ''}</div>`;
+  }
   if (scaleTab === 'playbook') { const starred = es.filter(e => e.star).length;
     return head + `<div class="card" style="margin-bottom:16px"><h2>How this turns into a playbook</h2><div class="sub" style="color:var(--text);line-height:1.7">1. Write in the Journal every day. 2. Star (★) the notes that are real lessons for a client. 3. Once a week, press <b>Copy everything for Claude</b> and paste it to me. I turn it into clean bullets and a plan. 4. Paste the polished bullets back into the pillar boxes below. After 8 weeks this page is the draft playbook.</div>
       <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="copyScaleAll">Copy everything for Claude</button><button class="btn ghost" data-act="copyPlaybook">Copy playbook draft</button><span class="sub" style="align-self:center">${starred} starred note${starred === 1 ? '' : 's'} so far</span></div></div>
@@ -1437,6 +1478,10 @@ document.addEventListener('click', e => {
     }
     case 'toggleTask': toggleTask(id); break;
     case 'scaleTab': scaleTab = el.dataset.t; render(); break;
+    case 'scalePillar': scalePillar = el.dataset.p; saveUI(); render(); break;
+    case 'ladScore': { const l = S.scale.ladder[el.dataset.p], k = el.dataset.k, n = +el.dataset.n; l.sc[k] = l.sc[k] === n ? 0 : n; save(); render(); break; }
+    case 'ladAdd': { const pl = PILLARS.find(x => x.id === el.dataset.p), txt = (S.scale.ladder[pl.id].biz || '').trim(); if (!txt) { toast('Write the action first'); break; }
+      S.scale.entries.push({id:uid(), week:scaleWk(), date:today(), type:'note', pillar:pl.id, text:`${pl.name}: ${txt}`, star:false}); save(); render(); toast('Added to the week ' + scaleWk() + ' journal'); break; }
     case 'scaleWeek': scaleWeekSel = +el.dataset.n; render(); break;
     case 'sStar': { const x = S.scale.entries.find(y => y.id === id); if (x) { x.star = !x.star; save(); render(); } break; }
     case 'sDel': if (confirm('Delete this note?')) { S.scale.entries = S.scale.entries.filter(x => x.id !== id); save(); render(); } break;
@@ -1588,7 +1633,7 @@ function restoreDrafts(root) {
   const orig = window[name];
   window[name] = function (id) { drafts.__modal = {name, id}; saveDrafts(); return orig(id); };
 });
-function saveUI() { try { localStorage.setItem(UI_KEY, JSON.stringify({view, taskFilter, proofRange, spendMode, folded, scaleTab})); } catch (e) {} }
+function saveUI() { try { localStorage.setItem(UI_KEY, JSON.stringify({view, taskFilter, proofRange, spendMode, folded, scaleTab, scalePillar})); } catch (e) {} }
 function loadUI() {
   let ui = {}; try { ui = JSON.parse(localStorage.getItem(UI_KEY)) || {}; } catch (e) {}
   if (!location.hash && NAV.some(n => n[0] === ui.view)) view = ui.view;
@@ -1596,6 +1641,7 @@ function loadUI() {
   if ([0, 30, 90].includes(ui.proofRange)) proofRange = ui.proofRange;
   if (ui.spendMode === 'all' || ui.spendMode === 'everyday') spendMode = ui.spendMode;
   if (['journal', 'pillars', 'playbook'].includes(ui.scaleTab)) scaleTab = ui.scaleTab;
+  if (PILLARS.some(p => p.id === ui.scalePillar)) scalePillar = ui.scalePillar;
   if (ui.folded && typeof ui.folded === 'object') folded = {identity: !!ui.folded.identity, mission: !!ui.folded.mission};
 }
 let scrollT;
@@ -1626,7 +1672,8 @@ document.addEventListener('change', e => {
 
 document.addEventListener('input', e => {   // Scale Notes boxes save as you type
   const d = e.target.dataset; if (!d) return;
-  if (d.sq) { const [p, i] = d.sq.split(':'); S.scale.answers[p][+i] = e.target.value; save(); }
+  if (d.lad) { const [p, k] = d.lad.split(':'); S.scale.ladder[p][k] = e.target.value; save(); }
+  else if (d.sq) { const [p, i] = d.sq.split(':'); S.scale.answers[p][+i] = e.target.value; save(); }
   else if (d.spb) { S.scale.playbook[d.spb] = e.target.value; save(); }
   else if (d.swk) { const [n, k] = d.swk.split(':'); (S.scale.weeks[n] = S.scale.weeks[n] || {})[k] = e.target.value; save(); }
 });
