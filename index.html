@@ -532,7 +532,7 @@ let S = loadState();
 
 function blank() {
   return {settings:{...DEFAULT_SETTINGS, offers:DEFAULT_SETTINGS.offers.map(o => ({...o})), goalDeadline:addDays(today(), 90)}, leads:[], clients:[], tasks:[], payments:[], daily:{}, proof:{},
-    expenses:[], bills:[], income:[], identity:DEFAULT_IDENTITY, mission:DEFAULT_MISSION, nonneg:defaultNonneg(), nonnegVersion:3, nonnegDone:{}, schedule:defaultSchedule(), contentLog:{}, weekly:{}, themes:[], scale:defaultScale(), icp:defaultIcp()};
+    expenses:[], bills:[], income:[], identity:DEFAULT_IDENTITY, mission:DEFAULT_MISSION, nonneg:defaultNonneg(), nonnegVersion:3, nonnegDone:{}, schedule:defaultSchedule(), contentLog:{}, weekly:{}, themes:[], scale:defaultScale(), icp:defaultIcp(), tmplEdits:{}};
 }
 function loadState() {
   let raw = null;
@@ -561,7 +561,7 @@ function migrate(o) {
   if ((o.nonnegVersion || 0) >= 2 && (o.nonnegVersion || 0) < 3 && !s.nonneg.some(n => n.auto === 'tiktok')) { // one-time: add the TikTok DMs item next to the DMs item, keeping the rest as he left it
     const i = s.nonneg.findIndex(n => n.auto === 'dms'); s.nonneg.splice(i >= 0 ? i + 1 : s.nonneg.length, 0, {id:uid(), auto:'tiktok', title:'Send 20 TikTok DMs'}); s.nonnegVersion = 3; }
   if (s.nonnegVersion < 3) s.nonnegVersion = 3;
-  s.scale = normScale(o.scale); s.icp = normIcp(o.icp); if (!Array.isArray(s.themes)) s.themes = [];
+  s.tmplEdits = (o.tmplEdits && typeof o.tmplEdits === 'object') ? o.tmplEdits : {}; s.scale = normScale(o.scale); s.icp = normIcp(o.icp); if (!Array.isArray(s.themes)) s.themes = [];
   if (s.settings.goalTitle === 'Hit £5K/month with the 6-week mentorship') s.settings.goalTitle = DEFAULT_SETTINGS.goalTitle; // goal is purchases, not £
   s.leads.forEach(l => { l.history = l.history || [{stage:l.stage, date:l.created || today()}]; l.created = l.created || l.history[0].date; });
   if (s.settings.sample && !(o.expenses && o.expenses.length)) { const sm = sampleData(); s.expenses = sm.expenses; s.bills = sm.bills; s.income = sm.income; } // older sample data had no spending
@@ -580,7 +580,7 @@ function save() {
 function sampleData(keep) {
   const t = today(), s = blank();
   s.settings.sample = true;
-  if (keep) { s.settings = {...keep.settings, sample:true}; s.identity = keep.identity; s.mission = keep.mission; s.themes = keep.themes; s.scale = keep.scale; s.icp = keep.icp; s.nonneg = keep.nonneg; s.schedule = keep.schedule; } // keep the personal bits (goal, identity, non-negotiables)
+  if (keep) { s.settings = {...keep.settings, sample:true}; s.identity = keep.identity; s.mission = keep.mission; s.themes = keep.themes; s.scale = keep.scale; s.icp = keep.icp; s.tmplEdits = keep.tmplEdits; s.nonneg = keep.nonneg; s.schedule = keep.schedule; } // keep the personal bits (goal, identity, non-negotiables)
   const hist = (final, createdAgo, lastAgo, lostFrom) => {
     const path = ORDER.slice(0, ORDER.indexOf(final === 'lost' ? lostFrom : final) + 1);
     const span = Math.max(createdAgo - lastAgo, 0);
@@ -1296,10 +1296,11 @@ function vContent() {
 const urgency = l => !OPEN.includes(l.stage) ? '9999' : l.nextFollowUp || (isStuck(l) ? '0000' : '9998');
 const chaseLevel = l => { if (!OPEN.includes(l.stage)) return ''; const t = today(); if (isStuck(l) || (l.nextFollowUp && l.nextFollowUp <= t)) return 'due'; return l.nextFollowUp === addDays(t, 1) ? 'soon' : ''; };
 let pipeAll = {};   // columns the user has expanded to show every card
-let pipeGuide = true;
-const followerGuide = () => `<div class="card" style="margin-bottom:14px;background:rgba(202,163,28,.06);border-color:var(--line2)"><h2><span>Message new followers <span class="chip">Instagram + TikTok</span></span><button class="btn sm ghost" data-act="pipeGuide">${pipeGuide ? 'Hide' : 'Show'}</button></h2>
+let pipeGuide = true, pipeEdit = false;
+const tmplText = i => (S.tmplEdits && S.tmplEdits[TEMPLATES[i][0]]) || TEMPLATES[i][1];
+const followerGuide = () => `<div class="card" style="margin-bottom:14px;background:rgba(202,163,28,.06);border-color:var(--line2)"><h2><span>Message new followers <span class="chip">Instagram + TikTok</span></span><span style="display:flex;gap:6px">${pipeGuide ? `<button class="btn sm ${pipeEdit ? '' : 'ghost'}" data-act="pipeEdit">${pipeEdit ? 'Done' : 'Edit'}</button>` : ''}<button class="btn sm ghost" data-act="pipeGuide">${pipeGuide ? 'Hide' : 'Show'}</button></span></h2>
   ${pipeGuide ? `<div class="sub" style="margin-bottom:8px">Followers should see this in their main inbox, so the photo comes through. Send both, one straight after the other.</div>
-  ${[[1, 'Send a selfie with this caption', 0], [2, 'Then send this as a text message', 1]].map(([n, label, i]) => `<div class="row"><span class="nnnum" style="font-size:20px;align-self:flex-start">${n}</span><div class="grow"><b>${label}</b><div class="iq" style="font-style:normal">${esc(TEMPLATES[i][1])}</div></div><button class="btn sm" data-act="copyTmpl" data-i="${i}">Copy</button></div>`).join('')}
+  ${[[1, 'Send a selfie with this caption', 0], [2, 'Then send this as a text message', 1]].map(([n, label, i]) => `<div class="row"><span class="nnnum" style="font-size:20px;align-self:flex-start">${n}</span><div class="grow"><b>${label}</b>${pipeEdit ? `<textarea data-tmpl="${i}" aria-label="${esc(TEMPLATES[i][0])}" style="margin-top:6px;min-height:${i === 0 ? 64 : 110}px">${esc(tmplText(i))}</textarea>` : `<div class="iq" style="font-style:normal">${esc(tmplText(i))}</div>`}</div>${pipeEdit ? (S.tmplEdits[TEMPLATES[i][0]] ? `<button class="btn sm ghost" data-act="tmplReset" data-i="${i}" title="Back to the original wording">Reset</button>` : '') : `<button class="btn sm" data-act="copyTmpl" data-i="${i}">Copy</button>`}</div>`).join('')}
   <div class="row"><span class="nnnum" style="font-size:20px;align-self:flex-start">3</span><div class="grow"><b>When they reply</b><div class="sub">Add them with + Lead (or drag the card) into <b>Replied to Me</b>. Next ask what they are working on, and only offer the webinar after they have told you something real.</div></div></div>` : ''}</div>`;
 function vPipeline() {
   const open = openLeads();
@@ -1796,6 +1797,8 @@ document.addEventListener('click', e => {
     case 'icpDel': S.icp.ideas = S.icp.ideas.filter(x => x.id !== id); save(); render(); break;
     case 'icpHook': { const x = S.icp.ideas.find(y => y.id === id); if (x) (navigator.clipboard?.writeText(x.hook) || Promise.reject()).then(() => toast('Hook copied'), () => toast('Copy blocked by the browser')); break; }
     case 'icpCopy': (navigator.clipboard?.writeText(icpText()) || Promise.reject()).then(() => toast('Copied. Paste it to Claude for more ideas'), () => toast('Copy blocked by the browser')); break;
+    case 'pipeEdit': pipeEdit = !pipeEdit; if (!pipeEdit) { Object.keys(S.tmplEdits).forEach(k => { if (!String(S.tmplEdits[k] || '').trim()) delete S.tmplEdits[k]; }); save(); } render(); break;
+    case 'tmplReset': delete S.tmplEdits[TEMPLATES[+el.dataset.i][0]]; save(); render(); toast('Back to the original wording'); break;
     case 'pipeGuide': pipeGuide = !pipeGuide; saveUI(); render(); break;
     case 'pipeMore': pipeAll[el.dataset.s] = !pipeAll[el.dataset.s]; render(); break;
     case 'scalePillar': scalePillar = el.dataset.p; saveUI(); render(); break;
@@ -1816,10 +1819,10 @@ document.addEventListener('click', e => {
     case 'bump': bump(el.dataset.k, +el.dataset.n); break;
     case 'range': proofRange = +el.dataset.v; render(); break;
     case 'proofToggle': S.proof[el.dataset.k] = !S.proof[el.dataset.k]; save(); render(); break;
-    case 'scripts': modal('Message scripts <small style="color:var(--muted);font-weight:500">tap to copy</small>', TEMPLATES.map(([name, txt], i) => `<div class="tmpl"><b>${name}</b><p>${esc(txt)}</p><button class="btn sm ghost" data-act="copyTmpl" data-i="${i}">Copy</button></div>`).join('')); break;
-    case 'copyTmpl': { const txt = TEMPLATES[+el.dataset.i][1].replace(/\{name\}/g, '[name]'); (navigator.clipboard?.writeText(txt) || Promise.reject()).then(() => toast('Copied — swap [name] for theirs'), () => toast('Copy blocked by browser — select the text instead')); break; }
+    case 'scripts': modal('Message scripts <small style="color:var(--muted);font-weight:500">tap to copy</small>', TEMPLATES.map(([name], i) => `<div class="tmpl"><b>${name}</b><p>${esc(tmplText(i))}</p><button class="btn sm ghost" data-act="copyTmpl" data-i="${i}">Copy</button></div>`).join('')); break;
+    case 'copyTmpl': { const txt = tmplText(+el.dataset.i).replace(/\{name\}/g, '[name]'); (navigator.clipboard?.writeText(txt) || Promise.reject()).then(() => toast('Copied — swap [name] for theirs'), () => toast('Copy blocked by browser — select the text instead')); break; }
     case 'clearSample': if (confirm('Delete all sample data and start with a blank dashboard? (Your goal, identity statement and non-negotiables are kept.)')) {
-      const n = blank(); n.settings = {...S.settings, sample:false}; n.identity = S.identity; n.mission = S.mission; n.themes = S.themes; n.scale = S.scale; n.icp = S.icp; n.nonneg = S.nonneg; n.schedule = S.schedule; S = n; save(); render(); toast('Fresh start. Add your first lead!'); } break;
+      const n = blank(); n.settings = {...S.settings, sample:false}; n.identity = S.identity; n.mission = S.mission; n.themes = S.themes; n.scale = S.scale; n.icp = S.icp; n.tmplEdits = S.tmplEdits; n.nonneg = S.nonneg; n.schedule = S.schedule; S = n; save(); render(); toast('Fresh start. Add your first lead!'); } break;
     case 'loadSample': if (confirm('Replace everything with sample data? (Your goal, identity statement and non-negotiables are kept.)')) { S = sampleData(S); save(); render(); } break;
     case 'wipe': if (confirm('Delete ALL your data? Export a backup first if you are unsure. This cannot be undone.')) { S = blank(); save(); render(); toast('Everything deleted'); } break;
     case 'export': {
@@ -1998,7 +2001,8 @@ document.addEventListener('change', e => {
 
 document.addEventListener('input', e => {   // Scale Notes boxes save as you type
   const d = e.target.dataset; if (!d) return;
-  if (d.icp) { S.icp.lists[d.icp] = e.target.value.split(/\r?\n/).map(x => x.trim()).filter(Boolean); save(); }
+  if (d.tmpl !== undefined) { S.tmplEdits[TEMPLATES[+d.tmpl][0]] = e.target.value; save(); }
+  else if (d.icp) { S.icp.lists[d.icp] = e.target.value.split(/\r?\n/).map(x => x.trim()).filter(Boolean); save(); }
   else if (d.uq) { const [pp, kk] = d.uq.split(':'); const lw = S.scale.ladder[pp]; lw.uq[kk] = e.target.value; lw.understand = composeUnderstand(pp); const cc = document.getElementById('uqc-' + pp); if (cc) cc.textContent = uqCount(pp); save(); }
   else if (d.ufree) { const lw = S.scale.ladder[d.ufree]; lw.ufree = e.target.value; lw.understand = composeUnderstand(d.ufree); save(); }
   else if (d.aiq) { const [pp, ii] = d.aiq.split(':'); const st = aiState[pp] = aiState[pp] || {}; st.ans = st.ans || []; st.ans[+ii] = e.target.value; }
