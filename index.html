@@ -1295,7 +1295,9 @@ function vContent() {
 /* chase level: 'due' = overdue / today / silent too long, 'soon' = tomorrow, '' = nothing to do yet */
 const urgency = l => !OPEN.includes(l.stage) ? '9999' : l.nextFollowUp || (isStuck(l) ? '0000' : '9998');
 const chaseLevel = l => { if (!OPEN.includes(l.stage)) return ''; const t = today(); if (isStuck(l) || (l.nextFollowUp && l.nextFollowUp <= t)) return 'due'; return l.nextFollowUp === addDays(t, 1) ? 'soon' : ''; };
-let pipeAll = {};   // columns the user has expanded to show every card
+let pipeAll = {}, pipeQ = '';   // columns expanded to show every card; the search text
+const leadMatches = l => { const q = pipeQ.trim().toLowerCase().replace(/^@/, ''); if (!q) return true;
+  return [l.name, l.handle, l.source, l.notes, offerName(l.offer)].some(x => String(x || '').toLowerCase().replace(/^@/, '').includes(q)); };
 let pipeGuide = true, pipeEdit = false;
 const tmplText = i => (S.tmplEdits && S.tmplEdits[TEMPLATES[i][0]]) || TEMPLATES[i][1];
 const followerGuide = () => `<div class="card" style="margin-bottom:14px;background:rgba(202,163,28,.06);border-color:var(--line2)"><h2><span>Message new followers <span class="chip">Instagram + TikTok</span></span><span style="display:flex;gap:6px">${pipeGuide ? `<button class="btn sm ${pipeEdit ? '' : 'ghost'}" data-act="pipeEdit">${pipeEdit ? 'Done' : 'Edit'}</button>` : ''}<button class="btn sm ghost" data-act="pipeGuide">${pipeGuide ? 'Hide' : 'Show'}</button></span></h2>
@@ -1308,17 +1310,18 @@ function vPipeline() {
   const bar2 = chase.length ? `<div class="chase-bar">🔴 ${chase.length} ${chase.length === 1 ? 'person needs' : 'people need'} chasing now · ${gbp(sum(chase, 'value'))} waiting on you<span class="sub" style="font-weight:500">Red cards are at the top of each column. Hit <b>Chased</b> after you message them and they drop back for ${S.settings.gap} days.</span></div>`
     : `<div class="chase-bar ok">✓ Nobody needs chasing right now${tmrw.length ? ` · ${tmrw.length} due tomorrow` : ''}</div>`;
   const cols = STAGES.map(s => {
-    let ls = S.leads.filter(l => l.stage === s.id);
+    let ls = S.leads.filter(l => l.stage === s.id && leadMatches(l));
     if (OPEN.includes(s.id)) ls.sort((a, b) => urgency(a).localeCompare(urgency(b)) || b.value - a.value);   // chase-now cards on top
     else ls = ls.sort((a, b) => b.history.slice(-1)[0].date.localeCompare(a.history.slice(-1)[0].date));
-    const all = !!pipeAll[s.id], shown = all ? ls : ls.slice(0, 12);
+    const all = !!pipeAll[s.id] || !!pipeQ.trim(), shown = all ? ls : ls.slice(0, 12);
     return `<div class="kcol" data-stage="${s.id}"><div class="khead"><b>${s.label}</b><small>${ls.length} · ${gbp(sum(ls, 'value'))}</small></div>
-      ${shown.map(l => card(l)).join('') || '<div class="sub" style="text-align:center;padding:14px 0">Empty</div>'}
-      ${ls.length > 12 ? `<button class="btn sm ghost" data-act="pipeMore" data-s="${s.id}" style="width:100%;margin-top:4px">${all ? 'Show fewer' : `Show all ${ls.length} (+ ${ls.length - shown.length} more)`}</button>` : ''}</div>`;
+      ${shown.map(l => card(l)).join('') || `<div class="sub" style="text-align:center;padding:14px 0">${pipeQ.trim() ? 'No match' : 'Empty'}</div>`}
+      ${ls.length > 12 && !pipeQ.trim() ? `<button class="btn sm ghost" data-act="pipeMore" data-s="${s.id}" style="width:100%;margin-top:4px">${all ? 'Show fewer' : `Show all ${ls.length} (+ ${ls.length - shown.length} more)`}</button>` : ''}</div>`;
   }).join('');
   return `<div class="top"><div><h1>Pipeline</h1><p>${open.length} open · ${gbp(sum(open, 'value'))} potential · drag cards between columns</p></div>
     <div class="acts"><button class="btn ghost" data-act="scripts">Message scripts</button><button class="btn" data-act="newLead">+ Add lead</button></div></div>
-    ${followerGuide()}${bar2}<div class="card" style="margin-bottom:14px;padding-top:4px">${quickAdd()}</div><div class="kan">${cols}</div>`;
+    ${followerGuide()}${bar2}<div class="card" style="margin-bottom:14px;padding-top:4px">${quickAdd()}
+      <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap"><input id="pipeSearch" type="search" value="${esc(pipeQ)}" placeholder="Search a name or @handle…" autocomplete="off" aria-label="Search the pipeline" style="flex:1;min-width:200px">${pipeQ.trim() ? `<span class="sub"><b style="color:var(--text)">${S.leads.filter(leadMatches).length}</b> match${S.leads.filter(leadMatches).length === 1 ? '' : 'es'}</span><button class="btn sm ghost" data-act="pipeClear">Clear</button>` : ''}</div></div><div class="kan">${cols}</div>`;
 }
 function card(l) {
   const isOpen = OPEN.includes(l.stage), sl = silent(l);
@@ -1797,6 +1800,7 @@ document.addEventListener('click', e => {
     case 'icpDel': S.icp.ideas = S.icp.ideas.filter(x => x.id !== id); save(); render(); break;
     case 'icpHook': { const x = S.icp.ideas.find(y => y.id === id); if (x) (navigator.clipboard?.writeText(x.hook) || Promise.reject()).then(() => toast('Hook copied'), () => toast('Copy blocked by the browser')); break; }
     case 'icpCopy': (navigator.clipboard?.writeText(icpText()) || Promise.reject()).then(() => toast('Copied. Paste it to Claude for more ideas'), () => toast('Copy blocked by the browser')); break;
+    case 'pipeClear': pipeQ = ''; render(); break;
     case 'pipeEdit': pipeEdit = !pipeEdit; if (!pipeEdit) { Object.keys(S.tmplEdits).forEach(k => { if (!String(S.tmplEdits[k] || '').trim()) delete S.tmplEdits[k]; }); save(); } render(); break;
     case 'tmplReset': delete S.tmplEdits[TEMPLATES[+el.dataset.i][0]]; save(); render(); toast('Back to the original wording'); break;
     case 'pipeGuide': pipeGuide = !pipeGuide; saveUI(); render(); break;
@@ -1831,7 +1835,10 @@ document.addEventListener('click', e => {
     }
   }
 });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+document.addEventListener('input', e => {   // pipeline search: filter as you type, keep the cursor where it was
+  if (e.target.id !== 'pipeSearch') return; const pos = e.target.selectionStart; pipeQ = e.target.value; render();
+  const el = document.getElementById('pipeSearch'); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (x) {} } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && e.target.id === 'pipeSearch' && pipeQ) { pipeQ = ''; render(); const el = document.getElementById('pipeSearch'); if (el) el.focus(); return; } if (e.key === 'Escape') closeModal(); });
 document.addEventListener('keydown', e => { const d = e.target.dataset; if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && d && (d.uq || d.ufree)) { e.preventDefault(); aiRun((d.uq || d.ufree).split(':')[0]); } });
 
 document.addEventListener('submit', e => {
