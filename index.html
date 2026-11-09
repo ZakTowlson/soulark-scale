@@ -1319,6 +1319,8 @@ function issuesCard() {
     <button class="btn sm ${x.made ? 'good' : 'ghost'}" data-act="themeMade" data-id="${x.id}">${x.made ? '✓ Made' : 'Made content'}</button><button class="x" data-act="delTheme" data-id="${x.id}" aria-label="Delete">×</button></div>`).join('') || '<div class="empty">Nothing saved yet. Paste the first message above.</div>'}
   ${ls.length > 8 ? `<div style="margin-top:8px"><button class="btn sm ghost" data-act="issuesAll">${issuesAll ? 'Show fewer' : `Show all ${ls.length}`}</button></div>` : ''}` : ''}</div>`;
 }
+const stageJump = () => `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 10px"><span class="sub" style="margin-right:4px">Jump to:</span>${STAGES.map(st => { const n = S.leads.filter(l => l.stage === st.id && leadMatches(l)).length;
+  return `<button class="wkp ${st.id === 'won' ? 'now' : ''}" data-act="pipeJumpCol" data-s="${st.id}" style="min-width:0;padding:6px 12px;flex-direction:row;gap:6px">${st.label}<small style="color:inherit;opacity:.8">${n}</small></button>`; }).join('')}</div>`;
 let pipeAll = {}, pipeQ = '';   // columns expanded to show every card; the search text
 const leadMatches = l => { const q = pipeQ.trim().toLowerCase().replace(/^@/, ''); if (!q) return true;
   return [l.name, l.handle, l.source, l.notes, offerName(l.offer)].some(x => String(x || '').toLowerCase().replace(/^@/, '').includes(q)); };
@@ -1345,7 +1347,7 @@ function vPipeline() {
   return `<div class="top"><div><h1>Pipeline</h1><p>${open.length} open · ${gbp(sum(open, 'value'))} potential · drag cards between columns</p></div>
     <div class="acts"><button class="btn ghost" data-act="issuesJump">Real life issues ↓</button><button class="btn ghost" data-act="scripts">Message scripts</button><button class="btn" data-act="newLead">+ Add lead</button></div></div>
     ${followerGuide()}${bar2}<div class="card" style="margin-bottom:14px;padding-top:4px">${quickAdd()}
-      <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap"><input id="pipeSearch" type="search" value="${esc(pipeQ)}" placeholder="Search a name or @handle…" autocomplete="off" aria-label="Search the pipeline" style="flex:1;min-width:200px">${pipeQ.trim() ? `<span class="sub"><b style="color:var(--text)">${S.leads.filter(leadMatches).length}</b> match${S.leads.filter(leadMatches).length === 1 ? '' : 'es'}</span><button class="btn sm ghost" data-act="pipeClear">Clear</button>` : ''}</div></div><div class="kan">${cols}</div>${issuesCard()}`;
+      <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap"><input id="pipeSearch" type="search" value="${esc(pipeQ)}" placeholder="Search a name or @handle…" autocomplete="off" aria-label="Search the pipeline" style="flex:1;min-width:200px">${pipeQ.trim() ? `<span class="sub"><b style="color:var(--text)">${S.leads.filter(leadMatches).length}</b> match${S.leads.filter(leadMatches).length === 1 ? '' : 'es'}</span><button class="btn sm ghost" data-act="pipeClear">Clear</button>` : ''}</div></div>${stageJump()}<div class="kan">${cols}</div>${issuesCard()}`;
 }
 function card(l) {
   const isOpen = OPEN.includes(l.stage), sl = silent(l);
@@ -1829,6 +1831,7 @@ document.addEventListener('click', e => {
     case 'issueTag': issueTag = el.dataset.t; issuesAll = false; render(); break;
     case 'issuesJump': { pipeIssues = true; render(); const c = document.getElementById('issuesCard'); if (c) { c.scrollIntoView({behavior:'smooth', block:'start'}); const t = c.querySelector('textarea'); if (t) setTimeout(() => t.focus({preventScroll:true}), 350); } break; }
     case 'issuesCopy': (navigator.clipboard?.writeText(issuesText()) || Promise.reject()).then(() => toast('Copied. Paste it to Claude for content ideas'), () => toast('Copy blocked by the browser')); break;
+    case 'pipeJumpCol': { const col = document.querySelector(`.kcol[data-stage="${el.dataset.s}"]`); if (col) col.scrollIntoView({behavior:'smooth', inline:'start', block:'nearest'}); break; }
     case 'pipeClear': pipeQ = ''; render(); break;
     case 'pipeEdit': pipeEdit = !pipeEdit; if (!pipeEdit) { Object.keys(S.tmplEdits).forEach(k => { if (!String(S.tmplEdits[k] || '').trim()) delete S.tmplEdits[k]; }); save(); } render(); break;
     case 'tmplReset': delete S.tmplEdits[TEMPLATES[+el.dataset.i][0]]; save(); render(); toast('Back to the original wording'); break;
