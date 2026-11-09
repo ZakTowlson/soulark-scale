@@ -73,6 +73,8 @@ button.kpi:hover{border-color:var(--line2)}
 .sub{color:var(--muted);font-size:12.5px}
 .val{font:600 14px var(--head);color:var(--gold2);white-space:nowrap}
 .chip{display:inline-block;font-size:11px;font-weight:700;border-radius:20px;padding:1px 9px;background:rgba(255,255,255,.08);color:var(--muted);vertical-align:1px;white-space:nowrap}
+.chip[data-s=replied]{background:rgba(110,148,242,.1);color:#B4C6FB}
+.chip[data-s=prospect]{background:rgba(110,148,242,.22);color:#9DB6FA}
 .chip[data-s=convo]{background:rgba(110,148,242,.16);color:#9DB6FA}
 .chip[data-s=booked]{background:rgba(167,139,250,.16);color:#C4B2FC}
 .chip[data-s=decide]{background:rgba(202,163,28,.18);color:var(--gold2)}
@@ -333,14 +335,16 @@ function needText(rem) {   // "3 BRIDGE Mentorship or 8 Soul Ark Community"
 }
 const STAGES = [
   {id:'dm',     label:'New / DM Sent',       p:.05},
-  {id:'convo',  label:'In Conversation',     p:.15},
+  {id:'replied', label:'Replied to Me',       p:.08},
+  {id:'prospect', label:'Prospect · ICP Credentials', p:.12},
+  {id:'convo',  label:'Lead · In Conversation', p:.15},
   {id:'booked', label:'Call Booked',         p:.40},
   {id:'decide', label:'Call Done · Deciding',p:.60},
   {id:'won',    label:'Won',                 p:1},
   {id:'lost',   label:'Lost',                p:0},
 ];
-const ORDER = ['dm','convo','booked','decide','won'];
-const OPEN = ['dm','convo','booked','decide'];
+const ORDER = ['dm','replied','prospect','convo','booked','decide','won'];
+const OPEN = ['dm','replied','prospect','convo','booked','decide'];
 const stageLabel = id => STAGES.find(s => s.id === id)?.label || id;
 const prob = id => STAGES.find(s => s.id === id)?.p || 0;
 const SOURCES = ['Instagram DM','TikTok DM','WhatsApp','YouTube','Webinar','Circle community','Referral','Other'];
@@ -897,7 +901,7 @@ function vToday() {
   const score = [
     ['Instagram DMs sent', log.dms || 0, st.dmTarget, 'dms'],
     ['TikTok DMs sent', log.tt || 0, st.ttTarget, 'tt'],
-    ['Conversations started', autoCount(t, 'convo'), st.convoTarget, null],
+    ['Conversations started', S.leads.filter(l => l.history.some(h => h.date === t && ['replied', 'prospect', 'convo'].includes(h.stage))).length, st.convoTarget, null],
     ['Calls booked', autoCount(t, 'booked'), st.callTarget, null],
     ['Post published', (S.contentLog[t] || {}).piece ? 1 : 0, 1, null],
   ];
@@ -1482,6 +1486,7 @@ function vProof() {
   const steps = [
     ['DMs sent', dms],
     ['Leads in pipeline', ls.length],
+    ['Replied to me', ls.filter(l => reached(l, 'replied')).length],
     ['Real conversations', ls.filter(l => reached(l, 'convo')).length],
     ['Calls booked', ls.filter(l => reached(l, 'booked')).length],
     ['Calls held', ls.filter(l => reached(l, 'decide')).length],
@@ -1693,7 +1698,7 @@ function moveLead(id, stage, ask = true) {
   if (stage === 'won') return winForm(id);
   if (stage === 'lost') return lostForm(id);
   applyStage(l, stage); l.lostReason = ''; save(); render();
-  if (ask && stage !== 'dm' && !l.offer) { toast('Which offer are you talking about? Pick it and the value fills in.'); leadForm(id); }   // they were just a DM until now
+  if (ask && ORDER.indexOf(stage) >= ORDER.indexOf('convo') && !l.offer) { toast('Which offer are you talking about? Pick it and the value fills in.'); leadForm(id); }   // they were just a DM until now
 }
 function toggleTask(id) {
   const t = S.tasks.find(x => x.id === id); if (!t) return;
