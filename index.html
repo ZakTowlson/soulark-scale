@@ -109,6 +109,22 @@ textarea{resize:vertical;min-height:70px}
 .sec.bad{color:#FF8B8B}.sec.gold{color:var(--gold2)}
 /* kanban */
 .kan{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(250px,1fr);gap:12px;overflow-x:auto;padding-bottom:12px;align-items:start}
+.kan.fit{grid-auto-flow:row;grid-template-columns:repeat(8,minmax(0,1fr));grid-auto-columns:auto;gap:8px;overflow-x:visible}
+.kan.fit .kcol{padding:8px;min-width:0}
+.kan.fit .khead{flex-wrap:wrap;gap:2px 6px}
+.kan.fit .khead b{font-size:12.5px;line-height:1.25}
+.kan.fit .lcard{padding:8px;margin-bottom:7px}
+.kan.fit .lcard .t{flex-direction:column;gap:1px}
+.kan.fit .lcard .t b{font-size:13px;line-height:1.25}
+.kan.fit .lcard .sub{font-size:11.5px;line-height:1.35}
+.kan.fit .lcard .m{gap:3px;margin:5px 0 0}
+.kan.fit .lcard .m .chip{font-size:10.5px;padding:2px 6px;white-space:normal;max-width:100%;overflow-wrap:anywhere}
+.kan.fit .lcard .a .ch{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.kan.fit .lcard .a{gap:3px;margin-top:7px}
+.kan.fit .lcard .a button{padding:3px 5px;font-size:11px}
+.jr{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 10px}
+.jr.fitjr{display:none}
+@media(max-width:1180px){.kan.fit{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(230px,1fr);overflow-x:auto}.kan.fit .lcard .t{flex-direction:row}.jr.fitjr{display:flex}}
 .kcol{background:#0F1630;border:1px solid var(--line);border-radius:var(--r);padding:12px;min-height:200px}
 .kcol.over{border-color:var(--gold);background:rgba(202,163,28,.06)}
 .khead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;padding:0 2px}
@@ -1319,12 +1335,12 @@ function issuesCard() {
     <button class="btn sm ${x.made ? 'good' : 'ghost'}" data-act="themeMade" data-id="${x.id}">${x.made ? '✓ Made' : 'Made content'}</button><button class="x" data-act="delTheme" data-id="${x.id}" aria-label="Delete">×</button></div>`).join('') || '<div class="empty">Nothing saved yet. Paste the first message above.</div>'}
   ${ls.length > 8 ? `<div style="margin-top:8px"><button class="btn sm ghost" data-act="issuesAll">${issuesAll ? 'Show fewer' : `Show all ${ls.length}`}</button></div>` : ''}` : ''}</div>`;
 }
-const stageJump = () => `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 10px"><span class="sub" style="margin-right:4px">Jump to:</span>${STAGES.map(st => { const n = S.leads.filter(l => l.stage === st.id && leadMatches(l)).length;
+const stageJump = () => `<div class="jr ${pipeFit ? 'fitjr' : ''}"><span class="sub" style="margin-right:4px">Jump to:</span>${STAGES.map(st => { const n = S.leads.filter(l => l.stage === st.id && leadMatches(l)).length;
   return `<button class="wkp ${st.id === 'won' ? 'now' : ''}" data-act="pipeJumpCol" data-s="${st.id}" style="min-width:0;padding:6px 12px;flex-direction:row;gap:6px">${st.label}<small style="color:inherit;opacity:.8">${n}</small></button>`; }).join('')}</div>`;
 let pipeAll = {}, pipeQ = '';   // columns expanded to show every card; the search text
 const leadMatches = l => { const q = pipeQ.trim().toLowerCase().replace(/^@/, ''); if (!q) return true;
   return [l.name, l.handle, l.source, l.notes, offerName(l.offer)].some(x => String(x || '').toLowerCase().replace(/^@/, '').includes(q)); };
-let pipeGuide = true, pipeEdit = false;
+let pipeGuide = true, pipeEdit = false, pipeFit = true;   // pipeFit: all columns on one screen
 const tmplText = i => (S.tmplEdits && S.tmplEdits[TEMPLATES[i][0]]) || TEMPLATES[i][1];
 const followerGuide = () => `<div class="card" style="margin-bottom:14px;background:rgba(202,163,28,.06);border-color:var(--line2)"><h2><span>Message new followers <span class="chip">Instagram + TikTok</span></span><span style="display:flex;gap:6px">${pipeGuide ? `<button class="btn sm ${pipeEdit ? '' : 'ghost'}" data-act="pipeEdit">${pipeEdit ? 'Done' : 'Edit'}</button>` : ''}<button class="btn sm ghost" data-act="pipeGuide">${pipeGuide ? 'Hide' : 'Show'}</button></span></h2>
   ${pipeGuide ? `<div class="sub" style="margin-bottom:8px">Followers should see this in their main inbox, so the photo comes through. Send both, one straight after the other.</div>
@@ -1345,9 +1361,9 @@ function vPipeline() {
       ${ls.length > 12 && !pipeQ.trim() ? `<button class="btn sm ghost" data-act="pipeMore" data-s="${s.id}" style="width:100%;margin-top:4px">${all ? 'Show fewer' : `Show all ${ls.length} (+ ${ls.length - shown.length} more)`}</button>` : ''}</div>`;
   }).join('');
   return `<div class="top"><div><h1>Pipeline</h1><p>${open.length} open · ${gbp(sum(open, 'value'))} potential · drag cards between columns</p></div>
-    <div class="acts"><button class="btn ghost" data-act="issuesJump">Real life issues ↓</button><button class="btn ghost" data-act="scripts">Message scripts</button><button class="btn" data-act="newLead">+ Add lead</button></div></div>
+    <div class="acts"><button class="btn ghost" data-act="pipeFit" title="${pipeFit ? 'Bigger cards, scroll sideways' : 'Show every column on one screen'}">${pipeFit ? 'Wide view' : 'Fit all columns'}</button><button class="btn ghost" data-act="issuesJump">Real life issues ↓</button><button class="btn ghost" data-act="scripts">Message scripts</button><button class="btn" data-act="newLead">+ Add lead</button></div></div>
     ${followerGuide()}${bar2}<div class="card" style="margin-bottom:14px;padding-top:4px">${quickAdd()}
-      <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap"><input id="pipeSearch" type="search" value="${esc(pipeQ)}" placeholder="Search a name or @handle…" autocomplete="off" aria-label="Search the pipeline" style="flex:1;min-width:200px">${pipeQ.trim() ? `<span class="sub"><b style="color:var(--text)">${S.leads.filter(leadMatches).length}</b> match${S.leads.filter(leadMatches).length === 1 ? '' : 'es'}</span><button class="btn sm ghost" data-act="pipeClear">Clear</button>` : ''}</div></div>${stageJump()}<div class="kan">${cols}</div>${issuesCard()}`;
+      <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap"><input id="pipeSearch" type="search" value="${esc(pipeQ)}" placeholder="Search a name or @handle…" autocomplete="off" aria-label="Search the pipeline" style="flex:1;min-width:200px">${pipeQ.trim() ? `<span class="sub"><b style="color:var(--text)">${S.leads.filter(leadMatches).length}</b> match${S.leads.filter(leadMatches).length === 1 ? '' : 'es'}</span><button class="btn sm ghost" data-act="pipeClear">Clear</button>` : ''}</div></div>${stageJump()}<div class="kan ${pipeFit ? 'fit' : ''}">${cols}</div>${issuesCard()}`;
 }
 function card(l) {
   const isOpen = OPEN.includes(l.stage), sl = silent(l);
@@ -1832,6 +1848,7 @@ document.addEventListener('click', e => {
     case 'issuesJump': { pipeIssues = true; render(); const c = document.getElementById('issuesCard'); if (c) { c.scrollIntoView({behavior:'smooth', block:'start'}); const t = c.querySelector('textarea'); if (t) setTimeout(() => t.focus({preventScroll:true}), 350); } break; }
     case 'issuesCopy': (navigator.clipboard?.writeText(issuesText()) || Promise.reject()).then(() => toast('Copied. Paste it to Claude for content ideas'), () => toast('Copy blocked by the browser')); break;
     case 'pipeJumpCol': { const col = document.querySelector(`.kcol[data-stage="${el.dataset.s}"]`); if (col) col.scrollIntoView({behavior:'smooth', inline:'start', block:'nearest'}); break; }
+    case 'pipeFit': pipeFit = !pipeFit; saveUI(); render(); break;
     case 'pipeClear': pipeQ = ''; render(); break;
     case 'pipeEdit': pipeEdit = !pipeEdit; if (!pipeEdit) { Object.keys(S.tmplEdits).forEach(k => { if (!String(S.tmplEdits[k] || '').trim()) delete S.tmplEdits[k]; }); save(); } render(); break;
     case 'tmplReset': delete S.tmplEdits[TEMPLATES[+el.dataset.i][0]]; save(); render(); toast('Back to the original wording'); break;
@@ -2004,7 +2021,7 @@ function restoreDrafts(root) {
   const orig = window[name];
   window[name] = function (id) { drafts.__modal = {name, id}; saveDrafts(); return orig(id); };
 });
-function saveUI() { try { localStorage.setItem(UI_KEY, JSON.stringify({view, taskFilter, proofRange, spendMode, folded, scaleTab, scalePillar, pipeGuide, pipeIssues})); } catch (e) {} }
+function saveUI() { try { localStorage.setItem(UI_KEY, JSON.stringify({view, taskFilter, proofRange, spendMode, folded, scaleTab, scalePillar, pipeGuide, pipeIssues, pipeFit})); } catch (e) {} }
 function loadUI() {
   let ui = {}; try { ui = JSON.parse(localStorage.getItem(UI_KEY)) || {}; } catch (e) {}
   if (!location.hash && NAV.some(n => n[0] === ui.view)) view = ui.view;
@@ -2015,6 +2032,7 @@ function loadUI() {
   if (PILLARS.some(p => p.id === ui.scalePillar)) scalePillar = ui.scalePillar;
   if (typeof ui.pipeGuide === 'boolean') pipeGuide = ui.pipeGuide;
   if (typeof ui.pipeIssues === 'boolean') pipeIssues = ui.pipeIssues;
+  if (typeof ui.pipeFit === 'boolean') pipeFit = ui.pipeFit;
   if (ui.folded && typeof ui.folded === 'object') folded = {identity: !!ui.folded.identity, mission: !!ui.folded.mission};
 }
 let scrollT;
