@@ -1307,7 +1307,7 @@ function vPipeline() {
 function card(l) {
   const isOpen = OPEN.includes(l.stage), sl = silent(l);
   return `<div class="lcard ${chaseLevel(l)}" draggable="true" data-lead="${l.id}" data-act="editLead" data-id="${l.id}">
-    <div class="t"><b>${esc(l.name)}</b><span class="val">${gbp(l.value)}</span></div>
+    <div class="t"><b>${esc(l.name)}</b>${l.value || !isOpen ? `<span class="val">${gbp(l.value)}</span>` : '<span class="sub" style="white-space:nowrap">just a DM</span>'}</div>
     <div class="sub">${esc(l.handle || '')}${l.handle ? ' · ' : ''}${esc(l.source)}${l.offer ? ' · ' + esc(offerName(l.offer)) : ''}</div>
     <div class="m">${isOpen ? `<span class="chip ${sl >= S.settings.staleDays ? 'bad' : ''}">${sl === 0 ? 'contacted today' : sl + 'd silent'}</span>` : ''}
       ${l.nextFollowUp && isOpen ? `<span class="chip ${l.nextFollowUp < today() ? 'bad' : l.nextFollowUp === today() ? 'bad' : l.nextFollowUp === addDays(today(), 1) ? 'warn' : ''}">${l.nextFollowUp <= today() ? '🔴 follow up ' : 'follow up '}${rel(l.nextFollowUp)}</span>` : (isOpen && isStuck(l) ? '<span class="chip bad">🔴 no follow-up date</span>' : '')}
@@ -1576,11 +1576,11 @@ function snapsHtml() {
 
 /* ================= modals ================= */
 function leadForm(id) {
-  const l = id ? S.leads.find(x => x.id === id) : {name:'', handle:'', source:SOURCES[0], stage:'dm', offer:'bridge', value:offerPrice('bridge'), lastContact:today(), nextFollowUp:noSun(addDays(today(), S.settings.gap)), notes:''};
+  const l = id ? S.leads.find(x => x.id === id) : {name:'', handle:'', source:SOURCES[0], stage:'dm', offer:'', value:0, lastContact:today(), nextFollowUp:noSun(addDays(today(), S.settings.gap)), notes:''};
   modal(id ? 'Edit lead' : 'New lead', `<form data-form="lead" data-id="${id || ''}">
     <div class="two">${fld('Name', 'name', l.name, 'text', 'required')}${fld('Instagram / handle', 'handle', l.handle)}</div>
     <div class="two">${sel('Source', 'source', SOURCES, l.source)}${sel('Stage', 'stage', STAGES.map(s => [s.id, s.label]), l.stage)}</div>
-    <div class="two">${sel('Offer', 'offer', [['', 'Not decided'], ...S.settings.offers.map(o => [o.id, o.name])], l.offer || '')}${fld('Deal value (' + CUR + ')', 'value', l.value, 'number', 'min="0"')}</div>
+    <div class="two">${sel('Offer', 'offer', [['', 'Just a DM (no offer yet)'], ...S.settings.offers.map(o => [o.id, o.name])], l.offer || '')}${fld('Deal value (' + CUR + ')', 'value', l.value, 'number', 'min="0"')}</div>
     <div class="two">${fld('Last contacted', 'lastContact', l.lastContact, 'date')}${fld('Next follow-up', 'nextFollowUp', l.nextFollowUp, 'date')}</div>
     <label class="fld"><span>Notes</span><textarea name="notes">${esc(l.notes)}</textarea></label>
     <div class="mfoot">${id ? '<button type="button" class="btn danger l" data-act="delLead" data-id="' + id + '">Delete</button>' : ''}<button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save</button></div></form>`);
@@ -1688,11 +1688,12 @@ function applyStage(l, stage) {
   l.stage = stage; l.history.push({stage, date:t}); l.lastContact = t;
   if (OPEN.includes(stage) && !l.nextFollowUp) l.nextFollowUp = noSun(addDays(t, S.settings.gap));
 }
-function moveLead(id, stage) {
+function moveLead(id, stage, ask = true) {
   const l = S.leads.find(x => x.id === id); if (!l || l.stage === stage) return;
   if (stage === 'won') return winForm(id);
   if (stage === 'lost') return lostForm(id);
   applyStage(l, stage); l.lostReason = ''; save(); render();
+  if (ask && stage !== 'dm' && !l.offer) { toast('Which offer are you talking about? Pick it and the value fills in.'); leadForm(id); }   // they were just a DM until now
 }
 function toggleTask(id) {
   const t = S.tasks.find(x => x.id === id); if (!t) return;
@@ -1822,7 +1823,7 @@ document.addEventListener('submit', e => {
       const l = S.leads.find(x => x.id === id), newStage = f.stage;
       Object.assign(l, {name:f.name.trim(), handle:f.handle.trim(), source:f.source, offer:f.offer || '', value:+f.value || 0, lastContact:f.lastContact, nextFollowUp:f.nextFollowUp, notes:f.notes});
       save(); closeModal();
-      if (newStage !== l.stage) moveLead(id, newStage); else render();
+      if (newStage !== l.stage) moveLead(id, newStage, false); else render();
     } else {
       S.leads.push({id:uid(), name:f.name.trim(), handle:f.handle.trim(), source:f.source, stage:f.stage, offer:f.offer || '', value:+f.value || 0, lastContact:f.lastContact || t, nextFollowUp:f.nextFollowUp, notes:f.notes, created:t, history:[{stage:f.stage, date:t}]});
       save(); closeModal(); render(); toast('Lead added');
@@ -1844,7 +1845,7 @@ document.addEventListener('submit', e => {
     const q = document.querySelector('form[data-form=theme] input[name=pain]'); if (q) q.focus();
   } else if (kind === 'quicklead') {
     const raw = f.name.trim(), next = noSun(addDays(t, S.settings.gap));
-    S.leads.push({id:uid(), name:raw, handle:raw.startsWith('@') ? raw : '', source:f.source, stage:'dm', offer:'bridge', value:offerPrice('bridge'), lastContact:t, nextFollowUp:next, notes:'', created:t, history:[{stage:'dm', date:t}]});
+    S.leads.push({id:uid(), name:raw, handle:raw.startsWith('@') ? raw : '', source:f.source, stage:'dm', offer:'', value:0, lastContact:t, nextFollowUp:next, notes:'', created:t, history:[{stage:'dm', date:t}]});
     save(); render(); toast(`Added ${raw}. First follow-up ${fdate(next)}`);
     const q = document.querySelector('form[data-form=quicklead] input[name=name]'); if (q) q.focus();
   } else if (kind === 'client') {
@@ -1969,7 +1970,7 @@ document.addEventListener('change', e => {
     f.querySelectorAll('[data-when]').forEach(d => { d.hidden = d.dataset.when !== t.value; });
     return;
   }
-  if (f.dataset.form === 'lead' && t.value && f.elements.value) { f.elements.value.value = offerPrice(t.value); fire(f.elements.value); }
+  if (f.dataset.form === 'lead' && f.elements.value) { f.elements.value.value = t.value ? offerPrice(t.value) : 0; fire(f.elements.value); }
   if (f.dataset.form === 'payment') {
     if (t.value && f.elements.amount) { f.elements.amount.value = offerPrice(t.value); fire(f.elements.amount); }
     if (f.elements.counts) { f.elements.counts.checked = !!t.value; fire(f.elements.counts); }
