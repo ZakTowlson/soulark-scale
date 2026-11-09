@@ -124,7 +124,10 @@ textarea{resize:vertical;min-height:70px}
 .chase-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:rgba(238,98,98,.1);border:1px solid rgba(238,98,98,.45);border-radius:12px;padding:10px 14px;margin-bottom:14px;font-weight:600}
 .chase-bar.ok{background:rgba(67,192,138,.08);border-color:rgba(67,192,138,.35);color:var(--muted);font-weight:500}
 .lcard.dragging{opacity:.4}
-.lcard .t{display:flex;justify-content:space-between;gap:8px}
+.lcard .t{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.lcard .t b{min-width:0;overflow-wrap:anywhere}
+.lcard .t .val,.lcard .t .sub{flex:none}
+.lcard .sub{overflow-wrap:anywhere}
 .lcard .m{margin:7px 0 2px;display:flex;gap:5px;flex-wrap:wrap}
 .lcard .a{display:flex;gap:6px;margin-top:9px}
 .lcard .a button{background:rgba(255,255,255,.06);border:0;border-radius:7px;padding:3px 10px;font-size:12px;font-weight:700;color:var(--muted)}
@@ -1290,6 +1293,7 @@ function vContent() {
 /* chase level: 'due' = overdue / today / silent too long, 'soon' = tomorrow, '' = nothing to do yet */
 const urgency = l => !OPEN.includes(l.stage) ? '9999' : l.nextFollowUp || (isStuck(l) ? '0000' : '9998');
 const chaseLevel = l => { if (!OPEN.includes(l.stage)) return ''; const t = today(); if (isStuck(l) || (l.nextFollowUp && l.nextFollowUp <= t)) return 'due'; return l.nextFollowUp === addDays(t, 1) ? 'soon' : ''; };
+let pipeAll = {};   // columns the user has expanded to show every card
 function vPipeline() {
   const open = openLeads();
   const chase = open.filter(l => chaseLevel(l) === 'due'), tmrw = open.filter(l => chaseLevel(l) === 'soon');
@@ -1299,10 +1303,10 @@ function vPipeline() {
     let ls = S.leads.filter(l => l.stage === s.id);
     if (OPEN.includes(s.id)) ls.sort((a, b) => urgency(a).localeCompare(urgency(b)) || b.value - a.value);   // chase-now cards on top
     else ls = ls.sort((a, b) => b.history.slice(-1)[0].date.localeCompare(a.history.slice(-1)[0].date));
-    const shown = ls.slice(0, 12);
+    const all = !!pipeAll[s.id], shown = all ? ls : ls.slice(0, 12);
     return `<div class="kcol" data-stage="${s.id}"><div class="khead"><b>${s.label}</b><small>${ls.length} · ${gbp(sum(ls, 'value'))}</small></div>
       ${shown.map(l => card(l)).join('') || '<div class="sub" style="text-align:center;padding:14px 0">Empty</div>'}
-      ${ls.length > shown.length ? `<div class="sub" style="text-align:center">+ ${ls.length - shown.length} older</div>` : ''}</div>`;
+      ${ls.length > 12 ? `<button class="btn sm ghost" data-act="pipeMore" data-s="${s.id}" style="width:100%;margin-top:4px">${all ? 'Show fewer' : `Show all ${ls.length} (+ ${ls.length - shown.length} more)`}</button>` : ''}</div>`;
   }).join('');
   return `<div class="top"><div><h1>Pipeline</h1><p>${open.length} open · ${gbp(sum(open, 'value'))} potential · drag cards between columns</p></div>
     <div class="acts"><button class="btn ghost" data-act="scripts">Message scripts</button><button class="btn" data-act="newLead">+ Add lead</button></div></div>
@@ -1785,6 +1789,7 @@ document.addEventListener('click', e => {
     case 'icpDel': S.icp.ideas = S.icp.ideas.filter(x => x.id !== id); save(); render(); break;
     case 'icpHook': { const x = S.icp.ideas.find(y => y.id === id); if (x) (navigator.clipboard?.writeText(x.hook) || Promise.reject()).then(() => toast('Hook copied'), () => toast('Copy blocked by the browser')); break; }
     case 'icpCopy': (navigator.clipboard?.writeText(icpText()) || Promise.reject()).then(() => toast('Copied. Paste it to Claude for more ideas'), () => toast('Copy blocked by the browser')); break;
+    case 'pipeMore': pipeAll[el.dataset.s] = !pipeAll[el.dataset.s]; render(); break;
     case 'scalePillar': scalePillar = el.dataset.p; saveUI(); render(); break;
     case 'ladScore': { const l = S.scale.ladder[el.dataset.p], k = el.dataset.k, n = +el.dataset.n; l.sc[k] = l.sc[k] === n ? 0 : n; save(); render(); break; }
     case 'ladAdd': { const pl = PILLARS.find(x => x.id === el.dataset.p), txt = (S.scale.ladder[pl.id].biz || '').trim(); if (!txt) { toast('Write the action first'); break; }
