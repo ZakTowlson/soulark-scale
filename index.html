@@ -1205,7 +1205,7 @@ function themesCard(base, days) {
       <button class="btn sm">Log it</button></form>
     ${top.length ? `<div class="sec" style="margin-top:16px">This week's themes${notMade ? ` · ${notMade} not turned into content yet` : ' · all turned into content ✓'}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 4px">${top.map(([e, n], i) => `<span class="chip ${i === 0 ? 'warn' : ''}" style="font-size:13px;padding:4px 10px">${i === 0 ? '🔥 ' : ''}${esc(e)} · ${n}</span>`).join('')}</div>` : ''}
-    ${ls.length ? ls.map(x => `<div class="row"><div class="grow"><span class="chip" data-s="${x.made ? 'won' : ''}">${esc(x.emotion)}</span> <span class="sub">${esc(x.source)} · ${fdate(x.date)}</span>
+    ${ls.length ? ls.map(x => `<div class="row"><div class="grow"><span class="chip" data-s="${x.made ? 'won' : ''}">${esc(x.emotion)}</span> <span class="sub">${x.who ? esc(x.who) + ' · ' : ''}${esc(x.source)} · ${fdate(x.date)}</span>
         <div style="margin-top:4px">${esc(x.pain)}</div>${x.idea ? `<div class="sub" style="color:var(--gold2)">Idea: ${esc(x.idea)}</div>` : ''}</div>
         <button class="btn sm ${x.made ? 'good' : 'ghost'}" data-act="themeMade" data-id="${x.id}">${x.made ? '✓ Made' : 'Made content'}</button>
         <button class="x" data-act="delTheme" data-id="${x.id}" aria-label="Delete">×</button></div>`).join('') : '<div class="empty">Nothing logged for this week yet. Next time someone tells you how they really feel, put it here.</div>'}
@@ -1295,6 +1295,30 @@ function vContent() {
 /* chase level: 'due' = overdue / today / silent too long, 'soon' = tomorrow, '' = nothing to do yet */
 const urgency = l => !OPEN.includes(l.stage) ? '9999' : l.nextFollowUp || (isStuck(l) ? '0000' : '9998');
 const chaseLevel = l => { if (!OPEN.includes(l.stage)) return ''; const t = today(); if (isStuck(l) || (l.nextFollowUp && l.nextFollowUp <= t)) return 'due'; return l.nextFollowUp === addDays(t, 1) ? 'soon' : ''; };
+/* ---- real-life issues and topics: messages pasted in from DMs and prospects, kept with the themes for content later ---- */
+let pipeIssues = true, issueTag = 'All', issuesAll = false;
+function issuesText() {
+  const ls = [...S.themes].sort((a, b) => a.date.localeCompare(b.date));
+  return `REAL MESSAGES FROM MY AUDIENCE (Soul Ark: men 18 to 30, faith-led, giving everything but still feeling behind)\n\n` + ls.map(x => `- [${x.emotion}] ${x.who ? x.who + ', ' : ''}${fdate(x.date)}: ${x.pain}`).join('\n') +
+    `\n\nPlease find the 5 issues that come up most, then give me 10 reel hooks and 3 YouTube titles that speak to them directly, using their own words.`;
+}
+function issuesCard() {
+  const all = [...S.themes].sort((a, b) => b.date.localeCompare(a.date) || (b.id > a.id ? 1 : -1)), counts = tally(all);
+  const ls = all.filter(x => issueTag === 'All' || x.emotion === issueTag), shown = issuesAll ? ls : ls.slice(0, 8);
+  const names = [...new Set(S.leads.map(l => l.name).filter(Boolean))].slice(0, 300);
+  return `<div class="card" id="issuesCard" style="margin-top:16px"><h2><span>Real life issues and topics <span class="chip">${all.length}</span></span><span style="display:flex;gap:6px">${pipeIssues && all.length ? '<button class="btn sm ghost" data-act="issuesCopy">Copy all for Claude</button>' : ''}<button class="btn sm ghost" data-act="issuesToggle">${pipeIssues ? 'Hide' : 'Show'}</button></span></h2>
+  ${pipeIssues ? `<div class="sub" style="margin-bottom:10px">Paste messages from prospects and people in your DMs. Each one is saved with its topic, and it feeds your Common themes and your content ideas.</div>
+  <form data-form="issue" style="display:grid;gap:8px">
+    <textarea name="pain" placeholder="Paste their message here…" required style="min-height:90px"></textarea>
+    <div class="inline" style="flex-wrap:wrap;gap:8px"><input name="who" list="issueNames" placeholder="Who? (name or @handle, optional)" style="flex:2;min-width:180px"><datalist id="issueNames">${names.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+      <select name="emotion" aria-label="Topic" style="flex:2;min-width:170px">${EMOTIONS.map(e => `<option>${e}</option>`).join('')}</select>
+      <select name="source" aria-label="Where from" style="flex:1;min-width:130px">${THEME_SRC.map(e => `<option>${e}</option>`).join('')}</select>
+      <button class="btn">Save it</button></div></form>
+  ${all.length ? `<div class="sec" style="margin-top:16px">Topics so far</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 12px"><button class="wkp ${issueTag === 'All' ? 'on' : ''}" data-act="issueTag" data-t="All" style="min-width:0;padding:6px 12px;flex-direction:row">All · ${all.length}</button>${counts.map(([e, n]) => `<button class="wkp ${issueTag === e ? 'on' : ''}" data-act="issueTag" data-t="${esc(e)}" style="min-width:0;padding:6px 12px;flex-direction:row">${esc(e)} · ${n}</button>`).join('')}</div>` : ''}
+  ${shown.map(x => `<div class="row"><div class="grow"><span class="chip" data-s="${x.made ? 'won' : ''}">${esc(x.emotion)}</span> <span class="sub">${x.who ? esc(x.who) + ' · ' : ''}${esc(x.source)} · ${fdate(x.date)}</span><div class="snote">${esc(x.pain)}</div>${x.idea ? `<div class="sub" style="color:var(--gold2)">Idea: ${esc(x.idea)}</div>` : ''}</div>
+    <button class="btn sm ${x.made ? 'good' : 'ghost'}" data-act="themeMade" data-id="${x.id}">${x.made ? '✓ Made' : 'Made content'}</button><button class="x" data-act="delTheme" data-id="${x.id}" aria-label="Delete">×</button></div>`).join('') || '<div class="empty">Nothing saved yet. Paste the first message above.</div>'}
+  ${ls.length > 8 ? `<div style="margin-top:8px"><button class="btn sm ghost" data-act="issuesAll">${issuesAll ? 'Show fewer' : `Show all ${ls.length}`}</button></div>` : ''}` : ''}</div>`;
+}
 let pipeAll = {}, pipeQ = '';   // columns expanded to show every card; the search text
 const leadMatches = l => { const q = pipeQ.trim().toLowerCase().replace(/^@/, ''); if (!q) return true;
   return [l.name, l.handle, l.source, l.notes, offerName(l.offer)].some(x => String(x || '').toLowerCase().replace(/^@/, '').includes(q)); };
@@ -1319,9 +1343,9 @@ function vPipeline() {
       ${ls.length > 12 && !pipeQ.trim() ? `<button class="btn sm ghost" data-act="pipeMore" data-s="${s.id}" style="width:100%;margin-top:4px">${all ? 'Show fewer' : `Show all ${ls.length} (+ ${ls.length - shown.length} more)`}</button>` : ''}</div>`;
   }).join('');
   return `<div class="top"><div><h1>Pipeline</h1><p>${open.length} open · ${gbp(sum(open, 'value'))} potential · drag cards between columns</p></div>
-    <div class="acts"><button class="btn ghost" data-act="scripts">Message scripts</button><button class="btn" data-act="newLead">+ Add lead</button></div></div>
+    <div class="acts"><button class="btn ghost" data-act="issuesJump">Real life issues ↓</button><button class="btn ghost" data-act="scripts">Message scripts</button><button class="btn" data-act="newLead">+ Add lead</button></div></div>
     ${followerGuide()}${bar2}<div class="card" style="margin-bottom:14px;padding-top:4px">${quickAdd()}
-      <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap"><input id="pipeSearch" type="search" value="${esc(pipeQ)}" placeholder="Search a name or @handle…" autocomplete="off" aria-label="Search the pipeline" style="flex:1;min-width:200px">${pipeQ.trim() ? `<span class="sub"><b style="color:var(--text)">${S.leads.filter(leadMatches).length}</b> match${S.leads.filter(leadMatches).length === 1 ? '' : 'es'}</span><button class="btn sm ghost" data-act="pipeClear">Clear</button>` : ''}</div></div><div class="kan">${cols}</div>`;
+      <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap"><input id="pipeSearch" type="search" value="${esc(pipeQ)}" placeholder="Search a name or @handle…" autocomplete="off" aria-label="Search the pipeline" style="flex:1;min-width:200px">${pipeQ.trim() ? `<span class="sub"><b style="color:var(--text)">${S.leads.filter(leadMatches).length}</b> match${S.leads.filter(leadMatches).length === 1 ? '' : 'es'}</span><button class="btn sm ghost" data-act="pipeClear">Clear</button>` : ''}</div></div><div class="kan">${cols}</div>${issuesCard()}`;
 }
 function card(l) {
   const isOpen = OPEN.includes(l.stage), sl = silent(l);
@@ -1800,6 +1824,11 @@ document.addEventListener('click', e => {
     case 'icpDel': S.icp.ideas = S.icp.ideas.filter(x => x.id !== id); save(); render(); break;
     case 'icpHook': { const x = S.icp.ideas.find(y => y.id === id); if (x) (navigator.clipboard?.writeText(x.hook) || Promise.reject()).then(() => toast('Hook copied'), () => toast('Copy blocked by the browser')); break; }
     case 'icpCopy': (navigator.clipboard?.writeText(icpText()) || Promise.reject()).then(() => toast('Copied. Paste it to Claude for more ideas'), () => toast('Copy blocked by the browser')); break;
+    case 'issuesToggle': pipeIssues = !pipeIssues; saveUI(); render(); break;
+    case 'issuesAll': issuesAll = !issuesAll; render(); break;
+    case 'issueTag': issueTag = el.dataset.t; issuesAll = false; render(); break;
+    case 'issuesJump': { pipeIssues = true; render(); const c = document.getElementById('issuesCard'); if (c) { c.scrollIntoView({behavior:'smooth', block:'start'}); const t = c.querySelector('textarea'); if (t) setTimeout(() => t.focus({preventScroll:true}), 350); } break; }
+    case 'issuesCopy': (navigator.clipboard?.writeText(issuesText()) || Promise.reject()).then(() => toast('Copied. Paste it to Claude for content ideas'), () => toast('Copy blocked by the browser')); break;
     case 'pipeClear': pipeQ = ''; render(); break;
     case 'pipeEdit': pipeEdit = !pipeEdit; if (!pipeEdit) { Object.keys(S.tmplEdits).forEach(k => { if (!String(S.tmplEdits[k] || '').trim()) delete S.tmplEdits[k]; }); save(); } render(); break;
     case 'tmplReset': delete S.tmplEdits[TEMPLATES[+el.dataset.i][0]]; save(); render(); toast('Back to the original wording'); break;
@@ -1867,6 +1896,10 @@ document.addEventListener('submit', e => {
   } else if (kind === 'scaleedit') {
     const e = S.scale.entries.find(x => x.id === id); if (e) Object.assign(e, {week:+f.week, text:f.text.trim()});
     save(); closeModal(); render();
+  } else if (kind === 'issue') {
+    S.themes.push({id:uid(), date:t, emotion:f.emotion, source:f.source, pain:f.pain.trim(), idea:'', made:false, who:(f.who || '').trim()});
+    save(); render(); toast('Saved. It is in your themes and ready for content');
+    const q = document.querySelector('#issuesCard textarea[name=pain]'); if (q) q.focus();
   } else if (kind === 'theme') {
     S.themes.push({id:uid(), date:f.date || t, emotion:f.emotion, source:f.source, pain:f.pain.trim(), idea:(f.idea || '').trim(), made:false});
     save(); render(); toast('Logged');
@@ -1968,7 +2001,7 @@ function restoreDrafts(root) {
   const orig = window[name];
   window[name] = function (id) { drafts.__modal = {name, id}; saveDrafts(); return orig(id); };
 });
-function saveUI() { try { localStorage.setItem(UI_KEY, JSON.stringify({view, taskFilter, proofRange, spendMode, folded, scaleTab, scalePillar, pipeGuide})); } catch (e) {} }
+function saveUI() { try { localStorage.setItem(UI_KEY, JSON.stringify({view, taskFilter, proofRange, spendMode, folded, scaleTab, scalePillar, pipeGuide, pipeIssues})); } catch (e) {} }
 function loadUI() {
   let ui = {}; try { ui = JSON.parse(localStorage.getItem(UI_KEY)) || {}; } catch (e) {}
   if (!location.hash && NAV.some(n => n[0] === ui.view)) view = ui.view;
@@ -1978,6 +2011,7 @@ function loadUI() {
   if (['journal', 'pillars', 'playbook'].includes(ui.scaleTab)) scaleTab = ui.scaleTab;
   if (PILLARS.some(p => p.id === ui.scalePillar)) scalePillar = ui.scalePillar;
   if (typeof ui.pipeGuide === 'boolean') pipeGuide = ui.pipeGuide;
+  if (typeof ui.pipeIssues === 'boolean') pipeIssues = ui.pipeIssues;
   if (ui.folded && typeof ui.folded === 'object') folded = {identity: !!ui.folded.identity, mission: !!ui.folded.mission};
 }
 let scrollT;
