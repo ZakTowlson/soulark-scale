@@ -366,7 +366,7 @@ const ORDER = ['dm','replied','prospect','convo','booked','decide','won'];
 const OPEN = ['dm','replied','prospect','convo','booked','decide'];
 const stageLabel = id => STAGES.find(s => s.id === id)?.label || id;
 const prob = id => STAGES.find(s => s.id === id)?.p || 0;
-const SOURCES = ['Instagram DM','TikTok DM','WhatsApp','YouTube','Webinar','Circle community','Referral','Other'];
+const SOURCES = ['Instagram DM','WhatsApp','YouTube','Webinar','Circle community','Referral','Other'];
 const CATS = ['Client','Community','Content','Admin','Self'];
 const CAT_RENAME = {Sales:'Client', Clients:'Client', Build:'Admin'}; // old category names → new ones
 const PRI_COL = {high:'var(--bad)', med:'var(--warn)', low:'var(--dim)'};
@@ -384,7 +384,7 @@ const TEMPLATES = [
 const DEFAULT_SETTINGS = {
   bizName:'Soul Ark Scale', ownerName:'Zak', target:5000, offerPrice:995, currency:'$', staleDays:3, gap:3,
   offers:[{id:'community', name:'Soul Ark Community', price:395}, {id:'bridge', name:'BRIDGE Mentorship', price:995}],
-  dmTarget:20, ttTarget:20, convoTarget:5, callTarget:1, contentTarget:1,
+  dmTarget:20, convoTarget:5, callTarget:1, contentTarget:1,
   nextOffer:'Scale Mentorship for Coaches', sample:false,
   goalTitle:'Hit 50 purchases of Soul Ark Scale', goalTarget:50, goalUnit:'purchases', goalCount:0,
 };
@@ -402,7 +402,7 @@ const defaultSchedule = () => [
   {d:7, tag:'rest',  piece:'Rest',                                      stories:'Rest'},
 ];
 const EMOTIONS = ['Lost / no purpose','Stuck / unmotivated','Anxious / overwhelmed','Ashamed / guilty','Lonely','Angry / frustrated','Burnt out','Doubting God / faith','Money stress','Addiction / temptation','Relationship pain','Pressure as a man / provider','Hopeful / ready to change','Other'];
-const THEME_SRC = ['Live chat','Instagram DM','TikTok DM','WhatsApp','Webinar','Circle community','Client call','Comment','Other'];
+const THEME_SRC = ['Live chat','Instagram DM','WhatsApp','Webinar','Circle community','Client call','Comment','Other'];
 /* ---- Scale Notes: the 8-week journal that becomes the client playbook ---- */
 const SCALE_TYPES = [['learned','💡 What I learned'],['changed','🔧 What I changed'],['did','✅ What I did'],['well','🟢 What went well'],['bad','🔴 What didn’t work'],['real','✨ Realisation']];
 const PILLARS = [
@@ -535,7 +535,6 @@ const defaultNonneg = () => [
   {id:uid(), auto:'piece',   title:'Post 1 solid piece (reel, carousel or post)'},
   {id:uid(), auto:'stories', title:"Post today's stories (routine + the day's type)"},
   {id:uid(), auto:'dms',     title:'Send 20 personalised DMs (webinar invite + a question)'},
-  {id:uid(), auto:'tiktok',  title:'Send 20 TikTok DMs'},
   {id:uid(), title:'Follow up with every warm conversation and offer calls'},
   {id:uid(), title:'Post in the Soul Ark community'},
   {id:uid(), title:'Log my numbers (2 minutes)'},
@@ -574,8 +573,7 @@ function migrate(o) {
   s.tasks.forEach(t => { t.cat = CAT_RENAME[t.cat] || t.cat; });
   if (!(o.settings && o.settings.offers)) { s.settings.offers = DEFAULT_SETTINGS.offers.map(x => ({...x})); s.settings.offerPrice = 995; s.settings.currency = '$'; } // two offers, prices in $
   if ((o.nonnegVersion || 0) < 2) { s.nonneg = defaultNonneg(); s.nonnegVersion = 2; } // one-time: the agreed 9 non-negotiables
-  if ((o.nonnegVersion || 0) >= 2 && (o.nonnegVersion || 0) < 3 && !s.nonneg.some(n => n.auto === 'tiktok')) { // one-time: add the TikTok DMs item next to the DMs item, keeping the rest as he left it
-    const i = s.nonneg.findIndex(n => n.auto === 'dms'); s.nonneg.splice(i >= 0 ? i + 1 : s.nonneg.length, 0, {id:uid(), auto:'tiktok', title:'Send 20 TikTok DMs'}); s.nonnegVersion = 3; }
+  s.nonneg = s.nonneg.filter(n => n.auto !== 'tiktok'); // TikTok DMs removed: TikTok doesn't show who liked a post, so there's no one to DM
   if (s.nonnegVersion < 3) s.nonnegVersion = 3;
   s.tmplEdits = (o.tmplEdits && typeof o.tmplEdits === 'object') ? o.tmplEdits : {}; s.scale = normScale(o.scale); s.icp = normIcp(o.icp); if (!Array.isArray(s.themes)) s.themes = [];
   if (s.settings.goalTitle === 'Hit £5K/month with the 6-week mentorship') s.settings.goalTitle = DEFAULT_SETTINGS.goalTitle; // goal is purchases, not £
@@ -822,7 +820,7 @@ function taskRow(t) {
     <button class="x" data-act="delTask" data-id="${t.id}" aria-label="Delete task">×</button></div>`;
 }
 const fdateL = s => parse(s).toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric'});
-const DM_AUTO = {dms:['dms', 'dmTarget', 'DM'], tiktok:['tt', 'ttTarget', 'TikTok DM']};   // non-negotiables that tick themselves from a daily count
+const DM_AUTO = {dms:['dms', 'dmTarget', 'DM']};   // non-negotiables that tick themselves from a daily count
 const doneOn = (item, d) => DM_AUTO[item.auto] ? (((S.daily[d] || {})[DM_AUTO[item.auto][0]]) || 0) >= S.settings[DM_AUTO[item.auto][1]]
   : item.auto ? !!(S.contentLog[d] || {})[item.auto]
   : (S.nonnegDone[d] || []).includes(item.id);
@@ -890,7 +888,7 @@ function nnCard() {
   const active = S.nonneg.filter(n => nnApplies(n, t)), off = S.nonneg.filter(n => !nnApplies(n, t));
   const done = active.filter(n => isDone(n.id)).length, total = active.length, sk = nnStreak();
   const row = (n, rest, i) => `<div class="row ${rest ? 'offrow' : ''}" ${nnReorder ? `data-nn="${n.id}"` : ''}>${nnReorder ? '<span class="grip" draggable="true" title="Drag to reorder">⠿</span>' : ''}<span class="nnnum" aria-hidden="true">${i + 1}</span>${rest ? '<span class="tick off"></span>' : `<button class="tick ${isDone(n.id) ? 'done' : ''}" data-act="nnToggle" data-id="${n.id}" aria-label="Done">${TICK}</button>`}
-    <div class="grow ${isDone(n.id) && !rest ? 'done-t' : ''}">${nnReorder ? `<input class="nninput" data-nn-title="${n.id}" value="${esc(n.title)}" aria-label="Rename">` : `<b style="font-weight:600">${esc(n.title)}</b>`}${n.auto ? ` <span class="chip">${DM_AUTO[n.auto] ? (n.auto === 'tiktok' ? 'from TikTok count' : 'from DM count') : 'from Content'}</span>` : ''}</div>
+    <div class="grow ${isDone(n.id) && !rest ? 'done-t' : ''}">${nnReorder ? `<input class="nninput" data-nn-title="${n.id}" value="${esc(n.title)}" aria-label="Rename">` : `<b style="font-weight:600">${esc(n.title)}</b>`}${n.auto ? ` <span class="chip">${DM_AUTO[n.auto] ? 'from DM count' : 'from Content'}</span>` : ''}</div>
     ${nnReorder ? `<span class="mvs"><button class="mv" data-act="nnMove" data-id="${n.id}" data-dir="-1" aria-label="Move up">▲</button><button class="mv" data-act="nnMove" data-id="${n.id}" data-dir="1" aria-label="Move down">▼</button></span>` : ''}<button class="sunbtn ${n.sun ? 'on' : ''}" data-act="nnSun" data-id="${n.id}" title="Tap to ${n.sun ? 'stop doing' : 'also do'} this on Sundays">Sun</button><button class="x" data-act="nnDel" data-id="${n.id}" aria-label="Remove">×</button></div>`;
   const small = sun ? (total ? `${done} / ${total} done · Sunday: only items marked Sun` : 'Sunday is your day off · streak is safe') : `${done} / ${total} done today · ${sk ? sk + '-day streak' : 'complete all of them to start a streak'}`;
   return `<div class="card" style="margin-bottom:16px"><h2><span>My daily non-negotiables</span><span style="display:flex;gap:12px;align-items:center"><small>${small}</small><button class="btn sm ${nnReorder ? '' : 'ghost'}" data-act="nnReorder">${nnReorder ? 'Done' : 'Edit'}</button></span></h2>
@@ -921,7 +919,6 @@ function vToday() {
   const log = dayLog(t);
   const score = [
     ['Instagram DMs sent', log.dms || 0, st.dmTarget, 'dms'],
-    ['TikTok DMs sent', log.tt || 0, st.ttTarget, 'tt'],
     ['Conversations started', S.leads.filter(l => l.history.some(h => h.date === t && ['replied', 'prospect', 'convo'].includes(h.stage))).length, st.convoTarget, null],
     ['Calls booked', autoCount(t, 'booked'), st.callTarget, null],
     ['Post published', (S.contentLog[t] || {}).piece ? 1 : 0, 1, null],
@@ -959,7 +956,7 @@ function vToday() {
         ${score.map(([label, v, tgt, key]) => `<div class="sc"><div class="grow"><b>${label}</b>${bar(v / tgt * 100, v >= tgt ? 'g' : '')}</div>
           ${key ? `<button class="pm" data-act="bump" data-k="${key}" data-n="-1" aria-label="minus">−</button>` : ''}
           <div class="n">${v}<small> / ${tgt}</small></div>
-          ${key ? `<button class="pm" data-act="bump" data-k="${key}" data-n="1" aria-label="plus">+</button> ${key === 'dms' || key === 'tt' ? `<button class="pm" data-act="bump" data-k="${key}" data-n="5" style="width:auto;padding:0 8px;font-size:12px">+5</button>` : ''}` : '<span class="sub" style="min-width:56px">auto</span>'}</div>`).join('')}
+          ${key ? `<button class="pm" data-act="bump" data-k="${key}" data-n="1" aria-label="plus">+</button> ${key === 'dms' ? `<button class="pm" data-act="bump" data-k="${key}" data-n="5" style="width:auto;padding:0 8px;font-size:12px">+5</button>` : ''}` : '<span class="sub" style="min-width:56px">auto</span>'}</div>`).join('')}
         <div class="sec" style="margin-top:14px">DMs · last 7 days</div>
         <div class="mini">${days.map(d => { const n = dayLog(d).dms || 0; return `<div title="${fdate(d)}: ${isSunday(d) && !n ? 'day off' : n + ' DMs'}"><i class="${isSunday(d) && n < st.dmTarget ? 'offbar' : n < st.dmTarget ? 'lo' : ''}" style="height:${isSunday(d) && !n ? 4 : Math.min(100, n / (st.dmTarget * 1.3) * 100)}%"></i>${parse(d).toLocaleDateString('en-GB',{weekday:'narrow'})}</div>`; }).join('')}</div></div>
       <div class="card"><h2>Clients needing you <small>this week</small></h2>
@@ -1342,7 +1339,7 @@ const leadMatches = l => { const q = pipeQ.trim().toLowerCase().replace(/^@/, ''
   return [l.name, l.handle, l.source, l.notes, offerName(l.offer)].some(x => String(x || '').toLowerCase().replace(/^@/, '').includes(q)); };
 let pipeGuide = true, pipeEdit = false, pipeFit = true;   // pipeFit: all columns on one screen
 const tmplText = i => (S.tmplEdits && S.tmplEdits[TEMPLATES[i][0]]) || TEMPLATES[i][1];
-const followerGuide = () => `<div class="card" style="margin-bottom:14px;background:rgba(202,163,28,.06);border-color:var(--line2)"><h2><span>Message new followers <span class="chip">Instagram + TikTok</span></span><span style="display:flex;gap:6px">${pipeGuide ? `<button class="btn sm ${pipeEdit ? '' : 'ghost'}" data-act="pipeEdit">${pipeEdit ? 'Done' : 'Edit'}</button>` : ''}<button class="btn sm ghost" data-act="pipeGuide">${pipeGuide ? 'Hide' : 'Show'}</button></span></h2>
+const followerGuide = () => `<div class="card" style="margin-bottom:14px;background:rgba(202,163,28,.06);border-color:var(--line2)"><h2><span>Message new followers <span class="chip">Instagram</span></span><span style="display:flex;gap:6px">${pipeGuide ? `<button class="btn sm ${pipeEdit ? '' : 'ghost'}" data-act="pipeEdit">${pipeEdit ? 'Done' : 'Edit'}</button>` : ''}<button class="btn sm ghost" data-act="pipeGuide">${pipeGuide ? 'Hide' : 'Show'}</button></span></h2>
   ${pipeGuide ? `<div class="sub" style="margin-bottom:8px">Followers should see this in their main inbox, so the photo comes through. Send both, one straight after the other.</div>
   ${[[1, 'Send a selfie with this caption', 0], [2, 'Then send this as a text message', 1]].map(([n, label, i]) => `<div class="row"><span class="nnnum" style="font-size:20px;align-self:flex-start">${n}</span><div class="grow"><b>${label}</b>${pipeEdit ? `<textarea data-tmpl="${i}" aria-label="${esc(TEMPLATES[i][0])}" style="margin-top:6px;min-height:${i === 0 ? 64 : 110}px">${esc(tmplText(i))}</textarea>` : `<div class="iq" style="font-style:normal">${esc(tmplText(i))}</div>`}</div>${pipeEdit ? (S.tmplEdits[TEMPLATES[i][0]] ? `<button class="btn sm ghost" data-act="tmplReset" data-i="${i}" title="Back to the original wording">Reset</button>` : '') : `<button class="btn sm" data-act="copyTmpl" data-i="${i}">Copy</button>`}</div>`).join('')}
   <div class="row"><span class="nnnum" style="font-size:20px;align-self:flex-start">3</span><div class="grow"><b>When they reply</b><div class="sub">Add them with + Lead (or drag the card) into <b>Replied to Me</b>. Next ask what they are working on, and only offer the webinar after they have told you something real.</div></div></div>` : ''}</div>`;
@@ -1613,9 +1610,8 @@ function vSettings() {
     <div class="two">${fld('Offer 2', 'o2name', s.offers[1].name)}${fld('Price (' + CUR + ')', 'o2price', s.offers[1].price, 'number', 'min="0"')}</div>
     <div class="two">${fld('Chase a lead after (days silent)', 'staleDays', s.staleDays, 'number', 'min="1"')}${fld('Default next follow-up (days)', 'gap', s.gap, 'number', 'min="1"')}</div>
     <div class="sec">Daily targets</div>
-    <div class="two">${fld('Instagram DMs sent', 'dmTarget', s.dmTarget, 'number', 'min="1"')}${fld('TikTok DMs sent', 'ttTarget', s.ttTarget, 'number', 'min="1"')}</div>
-    <div class="two">${fld('Conversations started', 'convoTarget', s.convoTarget, 'number', 'min="1"')}${fld('Calls booked', 'callTarget', s.callTarget, 'number', 'min="1"')}</div>
-    ${fld('Content pieces', 'contentTarget', s.contentTarget, 'number', 'min="1"')}
+    <div class="two">${fld('Instagram DMs sent', 'dmTarget', s.dmTarget, 'number', 'min="1"')}${fld('Conversations started', 'convoTarget', s.convoTarget, 'number', 'min="1"')}</div>
+    <div class="two">${fld('Calls booked', 'callTarget', s.callTarget, 'number', 'min="1"')}${fld('Content pieces', 'contentTarget', s.contentTarget, 'number', 'min="1"')}</div>
     ${fld('Your next offer (phase 2)', 'nextOffer', s.nextOffer)}
     <div class="mfoot"><button class="btn">Save settings</button></div></form></div>
   <div class="stack"><div class="card"><h2>Claude connection <small>for automatic drafting on the Pillars tab</small></h2>
@@ -1982,7 +1978,7 @@ document.addEventListener('submit', e => {
     S.nonneg.push({id:uid(), title:f.title.trim()}); save(); render();
   } else if (kind === 'settings') {
     const n = k => Math.max(1, +f[k] || DEFAULT_SETTINGS[k]);
-    Object.assign(S.settings, {bizName:f.bizName.trim() || 'My Coaching', ownerName:f.ownerName.trim(), target:n('target'), currency:f.currency || '$', offerPrice:Math.max(0, +f.o2price || 0), offers:[{id:'community', name:(f.o1name || '').trim() || 'Soul Ark Community', price:Math.max(0, +f.o1price || 0)}, {id:'bridge', name:(f.o2name || '').trim() || 'BRIDGE Mentorship', price:Math.max(0, +f.o2price || 0)}], staleDays:n('staleDays'), gap:n('gap'), dmTarget:n('dmTarget'), ttTarget:n('ttTarget'), convoTarget:n('convoTarget'), callTarget:n('callTarget'), contentTarget:n('contentTarget'), nextOffer:f.nextOffer});
+    Object.assign(S.settings, {bizName:f.bizName.trim() || 'My Coaching', ownerName:f.ownerName.trim(), target:n('target'), currency:f.currency || '$', offerPrice:Math.max(0, +f.o2price || 0), offers:[{id:'community', name:(f.o1name || '').trim() || 'Soul Ark Community', price:Math.max(0, +f.o1price || 0)}, {id:'bridge', name:(f.o2name || '').trim() || 'BRIDGE Mentorship', price:Math.max(0, +f.o2price || 0)}], staleDays:n('staleDays'), gap:n('gap'), dmTarget:n('dmTarget'), convoTarget:n('convoTarget'), callTarget:n('callTarget'), contentTarget:n('contentTarget'), nextOffer:f.nextOffer});
     document.title = S.settings.bizName + ' — Command Centre';
     save(); render(); toast('Settings saved');
   }
