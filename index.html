@@ -727,6 +727,12 @@ function streak() {
   while (guard++ < 3650) { if (isSunday(d)) { d = addDays(d, -1); continue; } if (!hit(d)) break; n++; d = addDays(d, -1); }
   return n;
 }
+/* adding a lead to the pipeline = you just sent them a DM, so it counts toward that account's daily DM number */
+function countDm(source) {
+  const key = source === 'Soul Ark DM' ? 'dms' : source === 'Viking DM' ? 'pdms' : null; if (!key) return '';
+  const d = today(); S.daily[d] = S.daily[d] || {dms:0, content:0}; S.daily[d][key] = (S.daily[d][key] || 0) + 1;
+  return ` · ${source === 'Soul Ark DM' ? 'Soul Ark' : 'Personal'} DMs today: ${S.daily[d][key]}/${source === 'Soul Ark DM' ? S.settings.dmTarget : S.settings.vdmTarget}`;
+}
 function bump(key, n) {
   const d = today(); S.daily[d] = S.daily[d] || {dms:0, content:0};
   S.daily[d][key] = Math.max(0, (S.daily[d][key] || 0) + n);
@@ -1939,7 +1945,7 @@ document.addEventListener('submit', e => {
       if (newStage !== l.stage) moveLead(id, newStage, false); else render();
     } else {
       S.leads.push({id:uid(), name:f.name.trim(), handle:f.handle.trim(), source:f.source, stage:f.stage, offer:f.offer || '', value:+f.value || 0, lastContact:f.lastContact || t, nextFollowUp:f.nextFollowUp, notes:f.notes, created:t, history:[{stage:f.stage, date:t}]});
-      save(); closeModal(); render(); toast('Lead added');
+      const dmNote = countDm(f.source); save(); closeModal(); render(); toast('Lead added' + dmNote);
     }
   } else if (kind === 'icpidea') {
     S.icp.ideas.unshift({id:uid(), tag:f.tag, hook:f.hook.trim(), note:'', done:false}); save(); render(); toast('Idea added');
@@ -1963,7 +1969,7 @@ document.addEventListener('submit', e => {
   } else if (kind === 'quicklead') {
     const raw = f.name.trim(), next = noSun(addDays(t, S.settings.gap));
     S.leads.push({id:uid(), name:raw, handle:raw.startsWith('@') ? raw : '', source:f.source, stage:'dm', offer:'', value:0, lastContact:t, nextFollowUp:next, notes:'', created:t, history:[{stage:'dm', date:t}]});
-    save(); render(); toast(`Added ${raw}. First follow-up ${fdate(next)}`);
+    const dmNote = countDm(f.source); save(); render(); toast(`Added ${raw}${dmNote}. First follow-up ${fdate(next)}`);
     const q = document.querySelector('form[data-form=quicklead] input[name=name]'); if (q) q.focus();
   } else if (kind === 'client') {
     const data = {name:f.name.trim(), start:f.start, price:+f.price || 0, status:f.status, health:f.health, nextSession:f.nextSession, notes:f.notes, testimonial:!!f.testimonial, upsell:!!f.upsell};
