@@ -1288,16 +1288,17 @@ const dmsOn = (d, acct) => { const v = S.daily[d] || {}, split = S.settings.acct
   if (d < split) return acct === 'viking' ? (v.dms || 0) + (v.pdms || 0) : 0;
   return acct === 'soul' ? (v.dms || 0) : (v.pdms || 0); };
 function outreachCard(days) {
-  const t = today(), from = addDays(t, -(days - 1)), ds = [...Array(days)].map((_, i) => addDays(from, i));
+  const t = today(), split = S.settings.acctSplit || '2026-11-12', from = addDays(t, -(days - 1)) < split ? split : addDays(t, -(days - 1));   // the trial only counts from the split date
+  const n = Math.max(0, diff(from, t) + 1), ds = [...Array(n)].map((_, i) => addDays(from, i));
   const rows = [['@thesoularkglobal', 'soul', 'Soul Ark DM'], ['@thevikingchristian', 'viking', 'Viking DM']].map(([h, a, src]) => {
     const sent = ds.reduce((n, d) => n + dmsOn(d, a), 0), ls = S.leads.filter(l => l.source === src && l.created >= from);
     const replied = ls.filter(l => reached(l, 'replied')).length, booked = ls.filter(l => reached(l, 'booked')).length, won = ls.filter(l => l.stage === 'won').length;
     return {h, sent, leads:ls.length, replied, booked, won, rate:sent ? Math.round(replied / sent * 100) : null}; });
   const best = rows[0].booked !== rows[1].booked ? (rows[0].booked > rows[1].booked ? rows[0] : rows[1]) : null;
-  return `<div class="card" style="margin-bottom:16px;border-color:var(--gold)"><h2>Outreach trial <small>last ${days} days · which account's DMs actually turn into conversations and calls</small></h2>
+  return `<div class="card" style="margin-bottom:16px;border-color:var(--gold)"><h2>Outreach trial <small>${t < split ? `starts ${fdate(split)}` : `from ${fdate(from)}`} · which account's DMs actually turn into conversations and calls</small></h2>
     <div style="overflow-x:auto"><table><tr class="sub"><td>Account</td><td class="r">DMs sent</td><td class="r">Replies</td><td class="r">Reply rate</td><td class="r">Calls booked</td><td class="r">Won</td></tr>
     ${rows.map(r => `<tr><td><b>${r.h}</b></td><td class="r">${r.sent}</td><td class="r">${r.replied}</td><td class="r">${r.rate === null ? '·' : r.rate + '%'}</td><td class="r">${r.booked}</td><td class="r">${r.won}</td></tr>`).join('')}</table></div>
-    <div class="sub" style="margin-top:10px">${best ? `<b style="color:var(--gold2)">${best.h}</b> is booking more calls so far. ` : ''}Add each lead with the right source (Soul Ark DM or Viking DM) so these numbers are true. If a type of DM is not getting replies after two weeks, stop sending it.</div></div>`;
+    <div class="sub" style="margin-top:10px">${t < split ? 'Nothing is counted yet. The trial starts tomorrow, so these numbers only cover DMs you send and leads you add from then. ' : ''}${best ? `<b style="color:var(--gold2)">${best.h}</b> is booking more calls so far. ` : ''}Add each lead with the right source (Soul Ark DM or Viking DM) so these numbers are true. If a type of DM is not getting replies after two weeks, stop sending it.</div></div>`;
 }
 function vContent() {
   const t = today(), base = addDays(weekStart(t), contentWeek * 7), days = [...Array(7)].map((_, i) => addDays(base, i)), work = days.slice(0, 6);
