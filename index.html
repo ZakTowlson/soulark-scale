@@ -238,6 +238,7 @@ td.r,th.r{text-align:right}
 .persona{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center}
 @media(max-width:640px){.persona{grid-template-columns:1fr;justify-items:center;text-align:center}}
 .ptag{font:600 19px/1.35 var(--head);margin:4px 0 10px}
+.mindset .card{border-color:var(--gold);background:linear-gradient(180deg,rgba(202,163,28,.08),transparent 70%),var(--panel)}
 .idea .hook{font-weight:600;line-height:1.45}
 .snote{white-space:pre-wrap;margin-top:4px;line-height:1.55}
 .qa label{display:block;font-weight:600;font-size:13.5px;margin:12px 0 5px}
@@ -475,6 +476,7 @@ const normScale = o => { const d = defaultScale(), x = {...d, ...(o || {})};
   x.playbook = {...d.playbook, ...(x.playbook || {})}; x.weeks = x.weeks || {}; x.entries = Array.isArray(x.entries) ? x.entries : []; return x; };
 /* ---- ICP: the man Zak is talking to in everything he posts. Drafted from his own answers; he edits it ---- */
 const ICP_SECTIONS = [
+  ['mindset', 'The real problem: it’s all mindset', 'Why he is stuck. Everything else on this page is a symptom of this.', 'list'],
   ['words', 'In his own words', 'The things he actually says out loud or thinks.', 'quote'],
   ['pains', 'Pain points', 'What hurts right now.', 'list'],
   ['fears', 'What he is afraid of', '', 'list'],
@@ -488,7 +490,7 @@ const ICP_SECTIONS = [
   ['learn', 'Still to learn about him', 'Ask these in DMs, calls and the webinar. Log the answers in Common themes.', 'list'],
 ];
 const ICP_TAGS = ['Reach reel', 'Sales', 'Client proof', 'My story', 'YouTube', 'Story'];
-const defaultIcp = () => ({
+const baseIcp = () => ({
   name:'Daniel', age:'24', tag:'The man who gives everything but still feels behind',
   chips:['Aged 18 to 30', 'Believes in God', 'Ambitious, big goals', 'Stuck in his head', 'Wants to make his family proud'],
   lists:{
@@ -529,7 +531,49 @@ const defaultIcp = () => ({
     ['Story','Rate your week 1 to 10 honestly. Here’s mine.','A poll or slider story. Same tool you use in BRIDGE.'],
   ].map(([tag, hook, note], i) => ({id:'i' + (i + 1), tag, hook, note, done:false})),
 });
-const normIcp = o => { const d = defaultIcp(), x = {...d, ...(o || {})}; x.lists = {...d.lists, ...(x.lists || {})}; x.chips = Array.isArray(x.chips) ? x.chips : d.chips; x.ideas = Array.isArray(x.ideas) ? x.ideas : d.ideas; return x; };
+/* Added 12 Nov: the real problem is mindset. He is stuck in his head, wearing a mask, living for other people, scared to live for himself. */
+const MINDSET_ADD = {
+  chips:['Wearing a mask', 'Lives for other people'],
+  lists:{
+    mindset:['It is all mindset. Not tactics, not discipline, not more hustle.', 'He has so much potential, but he can’t unlock it.', 'He is stuck in his mind. Stuck thinking, not living.', 'He is wearing a mask: the version of himself other people expect.', 'He is living for other people, not for himself.', 'He is scared to live for himself, because he has lived a lie for so long that he doesn’t know who he is without the mask.'],
+    words:['I have so much potential, but I can’t unlock it.', 'I’m stuck in my own head.', 'I’ve worn this mask for so long I don’t know who I am without it.', 'I’ve been living for everyone else.'],
+    pains:['Has so much potential but can’t unlock it.', 'Wears a mask and lives for other people instead of himself.', 'Scared to live for himself after living a lie for so long.'],
+    fears:['Taking the mask off and finding out who he really is.', 'Living for himself after living for everyone else for so long.'],
+    stories:['“If I stop playing the part, who am I?”', '“It’s not safe to be the real me.”'],
+    beliefs:['He believes he has to be who other people need him to be.'],
+    desires:['To live for himself, free of the mask.', 'To finally unlock his potential.'],
+    before:['Wearing a mask and living for other people.'],
+    after:['Has taken the mask off and lives for himself, with nothing to hide.', 'His potential is unlocked.'],
+  },
+  ideas:[
+    ['Reach reel', 'You don’t have a discipline problem. You have a mask problem.', 'The mask is what keeps him stuck. Discipline will not fix that.'],
+    ['Reach reel', 'You have so much potential. Here’s why you can’t unlock it.', 'It is all mindset: stuck in his head, not living.'],
+    ['Reach reel', 'Who are you living for? (hint: it’s not you)', ''],
+    ['Reach reel', 'You’re scared to live for yourself because you’ve lived a lie for so long.', ''],
+    ['Reach reel', 'It’s all mindset. Here’s what that actually means.', ''],
+  ],
+};
+const applyMindset = I => {
+  I.lists = I.lists || {};
+  Object.entries(MINDSET_ADD.lists).forEach(([k, add]) => { const a = Array.isArray(I.lists[k]) ? I.lists[k] : []; add.forEach(t => { if (!a.includes(t)) a.push(t); }); I.lists[k] = a; });
+  I.chips = Array.isArray(I.chips) ? I.chips : []; MINDSET_ADD.chips.forEach(c => { if (!I.chips.includes(c)) I.chips.push(c); });
+  I.ideas = Array.isArray(I.ideas) ? I.ideas : []; MINDSET_ADD.ideas.forEach(([tag, hook, note], i) => { if (!I.ideas.some(x => x.hook === hook)) I.ideas.unshift({id:'m' + (i + 1), tag, hook, note, done:false}); });
+  I.mindsetAdded = true; return I;
+};
+const defaultIcp = () => applyMindset(baseIcp());
+const normIcp = o => { const d = defaultIcp(), x = {...d, ...(o || {})}; x.lists = {...d.lists, ...(x.lists || {})}; x.chips = Array.isArray(x.chips) ? x.chips : d.chips; x.ideas = Array.isArray(x.ideas) ? x.ideas : d.ideas; if (o && !o.mindsetAdded) applyMindset(x); return x; };
+const defaultMkt = () => ({
+  statement:'I help Christian men who are stuck in their head and living for everyone else drop the mask, find out who they really are, and finally live for themselves. Through a brotherhood and one-to-one mentorship.',
+  answer:'I run a brotherhood for Christian men who are stuck in their head. I help them drop the mask and start living for themselves.',
+  bio:'Christian men’s brotherhood + 1:1 mentorship ✝️\nStuck in your head? Drop the mask. Live for you.\nFree live training Tue 8 Dec 👇',
+  offers:{
+    free:{line:'A free live session on purpose and breaking through as a man: why you’re stuck in your head, and how to start living for yourself.', forwho:'Any man who is ambitious, has so much potential and can’t unlock it.', get:'One live session on Zoom, Tue 8 Dec, 8pm UK / 3pm ET / 12pm PT. A Christmas offer at the end.', cta:'Save your seat: soulark.global/live-december-8th'},
+    community:{line:'A brotherhood of Christian men who keep you honest, with calls, lives, courses and masterclasses. One payment, yours for life.', forwho:'The man who knows what to do but keeps trying to do it alone.', get:'Weekly calls and lives, courses, masterclasses, brothers who ask if you did it, and retreats. Lifetime access for $395.', cta:'Join Soul Ark Community'},
+    bridge:{line:'Six weeks, one-to-one with me. We find what is really holding you back and rebuild how you live, from the inside out.', forwho:'The man who is done circling and ready to go deep with me beside him.', get:'Bottleneck, Root, Identity, Design, Grounded, Execute: one step a week, one-to-one, for $995.', cta:'Book your free strategy call'},
+  },
+  checks:{}, said:[],
+});
+const normMkt = o => { const d = defaultMkt(), x = {...d, ...(o || {})}; x.offers = {}; Object.keys(d.offers).forEach(k => { x.offers[k] = {...d.offers[k], ...(((o || {}).offers || {})[k] || {})}; }); x.checks = (o && o.checks && typeof o.checks === 'object') ? o.checks : {}; x.said = Array.isArray(o && o.said) ? o.said : []; return x; };
 const WEEKLY = [['yt','YouTube videos',3,true], ['clip','Clipping session',1,true], ['sales','Sales days (post + stories)',2,false], ['client','Client story',1,false], ['story','Your own story',1,false]];
 const EXP_CATS = ['Bills','Business & software','Marketing','Food','Transport','Personal','Giving','Other'];
 const defaultNonneg = () => [
@@ -551,7 +595,7 @@ let S = loadState();
 
 function blank() {
   return {settings:{...DEFAULT_SETTINGS, offers:DEFAULT_SETTINGS.offers.map(o => ({...o})), goalDeadline:addDays(today(), 90)}, leads:[], clients:[], tasks:[], payments:[], daily:{}, proof:{},
-    expenses:[], bills:[], income:[], identity:DEFAULT_IDENTITY, mission:DEFAULT_MISSION, nonneg:defaultNonneg(), nonnegVersion:3, nonnegDone:{}, schedule:defaultSchedule(), contentLog:{}, weekly:{}, themes:[], scale:defaultScale(), icp:defaultIcp(), tmplEdits:{}, clipsBank:20};
+    expenses:[], bills:[], income:[], identity:DEFAULT_IDENTITY, mission:DEFAULT_MISSION, nonneg:defaultNonneg(), nonnegVersion:3, nonnegDone:{}, schedule:defaultSchedule(), contentLog:{}, weekly:{}, themes:[], scale:defaultScale(), icp:defaultIcp(), mkt:defaultMkt(), tmplEdits:{}, clipsBank:20};
 }
 function loadState() {
   let raw = null;
@@ -583,7 +627,7 @@ function migrate(o) {
     s.nonneg.forEach(n => { if (OLD[n.auto] && n.title === OLD[n.auto]) n.title = NEW[n.auto]; }); }   // two accounts now: only renames items he has not edited
   if (!(o.settings && o.settings.acctSplit)) { s.leads.forEach(l => { if (l.source === 'Instagram DM') l.source = 'Viking DM'; }); s.themes.forEach(t => { if (t.source === 'Instagram DM') t.source = 'Viking DM'; }); }   // one-time: every DM before the split came from the personal account
   if (typeof s.clipsBank !== 'number') s.clipsBank = 20;
-  s.tmplEdits = (o.tmplEdits && typeof o.tmplEdits === 'object') ? o.tmplEdits : {}; s.scale = normScale(o.scale); s.icp = normIcp(o.icp); if (!Array.isArray(s.themes)) s.themes = [];
+  s.tmplEdits = (o.tmplEdits && typeof o.tmplEdits === 'object') ? o.tmplEdits : {}; s.scale = normScale(o.scale); s.icp = normIcp(o.icp); s.mkt = normMkt(o.mkt); if (!Array.isArray(s.themes)) s.themes = [];
   if (s.settings.goalTitle === 'Hit £5K/month with the 6-week mentorship') s.settings.goalTitle = DEFAULT_SETTINGS.goalTitle; // goal is purchases, not £
   s.leads.forEach(l => { l.history = l.history || [{stage:l.stage, date:l.created || today()}]; l.created = l.created || l.history[0].date; });
   if (s.settings.sample && !(o.expenses && o.expenses.length)) { const sm = sampleData(); s.expenses = sm.expenses; s.bills = sm.bills; s.income = sm.income; } // older sample data had no spending
@@ -602,7 +646,7 @@ function save() {
 function sampleData(keep) {
   const t = today(), s = blank();
   s.settings.sample = true;
-  if (keep) { s.settings = {...keep.settings, sample:true}; s.identity = keep.identity; s.mission = keep.mission; s.themes = keep.themes; s.scale = keep.scale; s.icp = keep.icp; s.tmplEdits = keep.tmplEdits; s.nonneg = keep.nonneg; s.schedule = keep.schedule; } // keep the personal bits (goal, identity, non-negotiables)
+  if (keep) { s.settings = {...keep.settings, sample:true}; s.identity = keep.identity; s.mission = keep.mission; s.themes = keep.themes; s.scale = keep.scale; s.icp = keep.icp; s.mkt = keep.mkt; s.tmplEdits = keep.tmplEdits; s.nonneg = keep.nonneg; s.schedule = keep.schedule; } // keep the personal bits (goal, identity, non-negotiables)
   const hist = (final, createdAgo, lastAgo, lostFrom) => {
     const path = ORDER.slice(0, ORDER.indexOf(final === 'lost' ? lostFrom : final) + 1);
     const span = Math.max(createdAgo - lastAgo, 0);
@@ -750,6 +794,7 @@ const ICON = {
   film:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/>',
   home:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
   funnel:'<path d="M3 4h18l-7 8v6l-4 2v-8z"/>',
+  megaphone:'<path d="M3 10v4a1 1 0 001 1h3l8 4V5L7 9H4a1 1 0 00-1 1z"/><path d="M18.5 9a4 4 0 010 6"/>',
   bell:'<path d="M6 8a6 6 0 0112 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 004 0"/>',
   users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14a5 5 0 014.5 5"/>',
   check:'<rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M8 12l3 3 5-6"/>',
@@ -781,7 +826,7 @@ function closeModal() {
 }
 
 /* ================= views ================= */
-const NAV = [['today','Today','home'],['content','Content','film'],['scale','Scale Notes','book'],['pipeline','Pipeline','funnel'],['clients','Clients','users'],['tasks','To-do','check'],['revenue','Money','pound'],['proof','Proof Engine','trophy'],['settings','Settings','cog'],['icp','ICP','target']];
+const NAV = [['today','Today','home'],['content','Content','film'],['marketing','Marketing','megaphone'],['scale','Scale Notes','book'],['pipeline','Pipeline','funnel'],['clients','Clients','users'],['tasks','To-do','check'],['revenue','Money','pound'],['proof','Proof Engine','trophy'],['settings','Settings','cog'],['icp','ICP','target']];
 let view = (location.hash || '').replace('#', '') || 'today';
 if (view === 'followups') view = 'pipeline';   // the Follow-ups tab was folded into the Pipeline
 if (!NAV.some(n => n[0] === view)) view = 'today';
@@ -805,7 +850,7 @@ function renderSide() {
 function render() {
   CUR = S.settings.currency || '$';
   renderSide();
-  const fn = {today:vToday, content:vContent, scale:vScale, icp:vIcp, pipeline:vPipeline, clients:vClients, tasks:vTasks, revenue:vRevenue, proof:vProof, settings:vSettings}[view];
+  const fn = {today:vToday, content:vContent, marketing:vMarketing, scale:vScale, icp:vIcp, pipeline:vPipeline, clients:vClients, tasks:vTasks, revenue:vRevenue, proof:vProof, settings:vSettings}[view];
   const banner = S.settings.sample ? `<div class="banner"><span><b>You're looking at sample data</b> — so you can see how everything works.</span><button class="btn sm" data-act="clearSample">Clear it &amp; start fresh</button></div>` : '';
   $('#main').innerHTML = banner + fn();
   restoreDrafts($('#main'));
@@ -1250,7 +1295,7 @@ const icpAvatar = () => `<svg viewBox="0 0 200 200" width="150" height="150" rol
   <path d="M86 92q4 3 8 0M106 92q4 3 8 0" stroke="#2a2018" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M92 107q8 4 16 0" stroke="#7a5a44" stroke-width="2.4" fill="none" stroke-linecap="round"/></g></svg>`;
 function icpText() {
   const I = S.icp, L = I.lists, sec = k => (L[k] || []).map(x => '- ' + x).join('\n');
-  return `MY IDEAL CLIENT (ICP): ${I.name}, ${I.age}. ${I.tag}\nTraits: ${I.chips.join(', ')}\n\nIn his own words:\n${sec('words')}\n\nPain points:\n${sec('pains')}\n\nFears:\n${sec('fears')}\n\nStories he tells himself:\n${sec('stories')}\n\nBeliefs:\n${sec('beliefs')}\n\nHow he sees the world:\n${sec('world')}\n\nWhat he wants:\n${sec('desires')}\n\nBefore:\n${sec('before')}\n\nAfter:\n${sec('after')}\n\nNot for:\n${sec('notfor')}\n\nMy offers: Soul Ark Community ($395 lifetime) and BRIDGE Mentorship ($995, 6 weeks one-to-one).\n\nPlease give me 10 new reel hooks, 3 YouTube titles and 3 story ideas that speak to him directly, in his own words, in a direct, honest, faith-led voice.`;
+  return `MY IDEAL CLIENT (ICP): ${I.name}, ${I.age}. ${I.tag}\nTraits: ${I.chips.join(', ')}\n\nThe real problem (it is all mindset):\n${sec('mindset')}\n\nIn his own words:\n${sec('words')}\n\nPain points:\n${sec('pains')}\n\nFears:\n${sec('fears')}\n\nStories he tells himself:\n${sec('stories')}\n\nBeliefs:\n${sec('beliefs')}\n\nHow he sees the world:\n${sec('world')}\n\nWhat he wants:\n${sec('desires')}\n\nBefore:\n${sec('before')}\n\nAfter:\n${sec('after')}\n\nNot for:\n${sec('notfor')}\n\nMy offers: Soul Ark Community ($395 lifetime) and BRIDGE Mentorship ($995, 6 weeks one-to-one).\n\nPlease give me 10 new reel hooks, 3 YouTube titles and 3 story ideas that speak to him directly, in his own words, in a direct, honest, faith-led voice.`;
 }
 function icpCard([k, title, sub, kind]) {
   const items = S.icp.lists[k] || [], editing = icpEditing === k;
@@ -1271,6 +1316,7 @@ function vIcp() {
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;justify-content:inherit">${I.chips.map(c => `<span class="chip" style="font-size:12.5px;padding:4px 10px">${esc(c)}</span>`).join('')}</div>
     <div class="sub" style="color:var(--text);line-height:1.6">He is you, earlier. You said you are the mentor you needed when you were younger. The name is only a placeholder.</div></div></div></div>
   ${wk.length ? `<div class="chase-bar ok" style="margin-bottom:16px;flex-direction:column;align-items:flex-start;gap:6px"><span style="color:var(--text);font-weight:600">What men told you this week</span><span>${wk.slice(0, 5).map(([e, n]) => `${esc(e)} (${n})`).join(' · ')}. Logged in Content schedule, Common themes.</span></div>` : ''}
+  <div class="mindset" style="margin-bottom:16px">${icpCard(sec('mindset'))}</div>
   <div class="cgrid">${['words', 'pains', 'fears', 'stories', 'beliefs', 'world', 'desires'].map(k => icpCard(sec(k))).join('')}</div>
   <div class="cgrid" style="margin-top:16px">${['before', 'after'].map(k => icpCard(sec(k))).join('')}${['notfor', 'learn'].map(k => icpCard(sec(k))).join('')}</div>
   <div class="card" style="margin-top:16px"><h2>Content ideas for him <small>${ideas.length} idea${ideas.length === 1 ? '' : 's'}${icpTag === 'All' ? '' : ' · ' + icpTag}</small></h2>
@@ -1289,6 +1335,88 @@ function icpForm() {
     <label class="fld"><span>Traits (one per line)</span><textarea name="chips" style="min-height:120px">${esc(I.chips.join('\n'))}</textarea></label>
     <div class="mfoot"><button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button class="btn">Save</button></div></form>`);
 }
+/* ---- MARKETING: making people understand what Zak sells. Drafted from his offers + ICP; every box is editable ---- */
+const WEBINAR_DATE = '2026-12-08', WEBINAR_LINK = 'https://www.soulark.global/live-december-8th';
+const MKT_OFFERS = [['free', 'Free live webinar', 'The door in', 'free'], ['community', 'Soul Ark Community', '$395 · lifetime', 'community'], ['bridge', 'BRIDGE Mentorship', '$995 · 6 weeks one-to-one', 'bridge']];
+const MKT_FIELDS = [['line', 'Say it like this'], ['forwho', 'Who it is for'], ['get', 'What they get'], ['cta', 'Next step']];
+const MKT_CHECKS = ['My bio says who it is for and what they get.', 'My link in bio goes to ONE thing (the webinar until 8 Dec).', 'My last 5 posts all named his problem in the first line.', 'I named an offer out loud in at least 2 posts this week.', 'Every post ends with ONE clear next step.', 'I asked 3 men “what do you think Soul Ark is?” and wrote down what they said.'];
+const MKT_JOBS = [
+  ['Attract', 'Name his pain so he stops scrolling.', '“You don’t have a discipline problem. You have a mask problem.”', 'Most posts'],
+  ['Teach', 'Show him why he is stuck and that you see the way out.', '“Why you can’t unlock your potential: it’s all mindset.”', 'Weekly'],
+  ['Prove', 'A real man’s result, his pain in the first line.', 'Testimonial clip, before and after, a message from a member.', 'Weekly'],
+  ['Offer', 'Say what you sell, who it is for and the next step. Out loud.', '“Soul Ark is a brotherhood for Christian men stuck in their head. Comment BROTHER.”', 'At least 2 a week'],
+];
+const MKT_WEEK = [['Mon', 'Attract', 'The pain clip: the mask, the loop, the potential.'], ['Tue', 'Teach', 'One idea from a masterclass or YouTube video.'], ['Wed', 'Prove', 'A member result or testimonial.'], ['Thu', 'Offer', 'Inside Soul Ark: show the community, say what it is and who it is for.'], ['Fri', 'Offer', 'Invite: the webinar (or BRIDGE after 8 Dec). Comment keyword.']];
+const MKT_KEYWORDS = [['WEBINAR', 'The link to the free live on 8 Dec', 'Saves his seat'], ['COURSE', 'The free starter course', 'Gets him into Circle'], ['CALL', 'Your booking link', 'Free chat, then BRIDGE or Community']];
+const mktPath = path => path.split('.');
+const mktGet = path => mktPath(path).reduce((o, k) => (o ? o[k] : ''), S.mkt) || '';
+const mktSet = (path, v) => { const p = mktPath(path); let o = S.mkt; p.slice(0, -1).forEach(k => { o = o[k]; }); o[p[p.length - 1]] = v; };
+let mktEditing = '';
+function mktText() {
+  const M = S.mkt, I = S.icp, o = M.offers, list = k => (I.lists[k] || []).map(x => '- ' + x).join('\n');
+  const off = ([id, name, price]) => `${name} (${price})\n  Say it like this: ${o[id].line}\n  Who it is for: ${o[id].forwho}\n  What they get: ${o[id].get}\n  Next step: ${o[id].cta}`;
+  return `MY MARKETING PROBLEM: people do not know what I sell. I need to fix that.\n\nWHO I TALK TO (${I.name}, ${I.age}): ${I.tag}\nThe real problem: it is all mindset.\n${list('mindset')}\n\nMY POSITIONING SENTENCE:\n${M.statement}\n\nMY 10-SECOND ANSWER:\n${M.answer}\n\nMY INSTAGRAM BIO (@thesoularkglobal):\n${M.bio}\n\nWHAT I SELL:\n${MKT_OFFERS.map(off).join('\n\n')}\n\nWHERE I AM: free live webinar Tue 8 Dec 2026 (${WEBINAR_LINK}) with a Christmas offer at the end. Goal: 50 purchases by 1 Jan 2027. I post at least 1 clip a day Mon to Fri on @thesoularkglobal and send 20 DMs a day. Sunday is rest.\n\nPlease: 1) tighten my positioning sentence, 2) write 5 bio options, 3) write 10 hooks that name my ideal client's problem AND point to what I sell, 4) write 5 Offer-day captions with a clear next step. Direct, honest, faith-led voice. No hype.`;
+}
+function mktBlock(path, title, hint, opts = {}) {
+  const editing = mktEditing === path, val = mktGet(path);
+  return `<div class="card" style="margin-bottom:16px"><h2><span>${title}</span><span style="display:flex;gap:6px"><button class="btn sm ghost" data-act="mktCopy" data-k="${path}">Copy</button><button class="btn sm ghost" data-act="mktEdit" data-k="${path}">${editing ? 'Done' : 'Edit'}</button></span></h2>${hint ? `<div class="sub">${hint}</div>` : ''}
+    ${editing ? `<textarea data-mkt="${path}" style="min-height:${opts.rows || 90}px;margin-top:8px" aria-label="${title}">${esc(val)}</textarea>` : `<div class="${opts.plain ? 'mplain' : 'iq'}" style="${opts.plain ? '' : 'font-style:normal;font-size:15.5px;'}white-space:pre-line">${esc(val)}</div>`}</div>`;
+}
+function mktOfferCard([id, name, price]) {
+  const editing = mktEditing === 'offer:' + id, o = S.mkt.offers[id];
+  return `<div class="card"><h2><span>${name}</span><button class="btn sm ghost" data-act="mktEdit" data-k="offer:${id}">${editing ? 'Done' : 'Edit'}</button></h2><div class="sub" style="margin-bottom:6px;color:var(--gold2);font-weight:600">${price}</div>
+    ${MKT_FIELDS.map(([f, lab]) => editing
+      ? `<label class="fld"><span>${lab}</span><textarea data-mkt="offers.${id}.${f}" style="min-height:64px">${esc(o[f])}</textarea></label>`
+      : `<div style="margin:9px 0"><div class="sub" style="font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:11px">${lab}</div><div style="line-height:1.55;${f === 'line' ? 'font-size:15px' : ''}">${esc(o[f])}</div></div>`).join('')}
+    ${editing ? '' : `<button class="btn sm ghost" data-act="mktCopy" data-k="offers.${id}.line">Copy the line</button>`}</div>`;
+}
+function vMarketing() {
+  const M = S.mkt, t = today(), wDays = diff(t, WEBINAR_DATE), done = MKT_CHECKS.filter((_, i) => M.checks[i]).length;
+  const gn = n => n < 0 ? 'passed' : n === 0 ? 'today' : n + (n === 1 ? ' day' : ' days');
+  return `<div class="top"><div><h1>Marketing</h1><p>Your biggest gap is simple: people don’t know what you sell. Fix it in this order. Say it clearly, say it everywhere, give one next step.</p></div>
+    <div class="acts"><button class="btn ghost" data-act="mktBrief">Copy brief for Claude</button></div></div>
+  <div class="chase-bar ok" style="margin-bottom:16px;gap:18px"><span><b style="color:var(--gold2)">Webinar</b> in ${gn(wDays)}</span><span>${done}/${MKT_CHECKS.length} clarity checks ticked</span></div>
+
+  <div class="card" style="margin-bottom:16px;border-color:var(--gold)"><h2>Why they don’t know what you sell</h2>
+    <ul class="blist">
+      <li><b>You post to inspire, and never say the offer out loud.</b> People enjoy the clip and have no idea there is a place to go next. <span class="sub">Fix: name what you sell in at least 2 posts a week.</span></li>
+      <li><b>Your offers are named by brand, not by result.</b> “Soul Ark Community” and “BRIDGE” mean nothing to a stranger. <span class="sub">Fix: say the result in his words first, the name second.</span></li>
+      <li><b>Too many doors at once.</b> Community, BRIDGE, book, YouTube, webinar. <span class="sub">Fix: one door per post. Until 8 Dec, the door is the webinar.</span></li>
+      <li><b>He doesn’t know it is for him.</b> The man stuck in his head, wearing a mask, never hears you say that. <span class="sub">Fix: start every post by naming him and his problem (see ICP).</span></li>
+    </ul></div>
+
+  ${mktBlock('statement', '1. Your one sentence', 'I help <b>[who]</b> go from <b>[what is wrong]</b> to <b>[what they get]</b> through <b>[how]</b>. Test it: say it to a stranger. If they can repeat it back, it works.', {rows:110})}
+
+  <div class="cgrid" style="margin-bottom:16px">${MKT_OFFERS.map(mktOfferCard).join('')}</div>
+  <div class="sub" style="margin:-6px 0 16px">2. What you sell, in plain words. Free is the way in, Community is the home, BRIDGE is the deep work. Only ever push the next rung to the man in front of you.</div>
+
+  <div class="cgrid" style="margin-bottom:16px">
+    ${mktBlock('answer', '3. Your 10-second answer', 'When anyone asks “what do you do?” Say this, in this order, every time.', {rows:80})}
+    ${mktBlock('bio', '4. Your Instagram bio (@thesoularkglobal)', 'Line 1 who it’s for and what it is. Line 2 his problem. Line 3 the one next step.', {rows:100, plain:true})}
+  </div>
+
+  <div class="card" style="margin-bottom:16px"><h2>5. Every post has one job <small>and at least 2 a week say the offer out loud</small></h2>
+    <div style="overflow-x:auto"><table><tr class="sub"><td>Job</td><td>What it does</td><td>Example</td><td class="r">How often</td></tr>
+    ${MKT_JOBS.map(([j, d, e, f]) => `<tr><td><b>${j}</b></td><td>${d}</td><td class="sub">${e}</td><td class="r">${f}</td></tr>`).join('')}</table></div>
+    <div class="sub" style="margin:14px 0 6px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:11px">Your Mon to Fri clip a day on @thesoularkglobal</div>
+    <div style="overflow-x:auto"><table>${MKT_WEEK.map(([d, j, n]) => `<tr><td><b>${d}</b></td><td><span class="chip">${j}</span></td><td>${n}</td></tr>`).join('')}</table></div>
+    <div class="sub" style="margin-top:8px">Sunday is rest. Saturday: stories and reels on @thevikingchristian, just you.</div></div>
+
+  <div class="card" style="margin-bottom:16px"><h2>6. The next step on every post</h2>
+    <div class="sub">Formula: <b>name him + his problem + one free thing + one word to comment.</b></div>
+    <div class="iq" style="font-style:normal">“If you’re a man who’s stuck in his head and wearing a mask, comment <b>WEBINAR</b> and I’ll send you the link to my free live on 8 December.”</div>
+    <div style="overflow-x:auto"><table><tr class="sub"><td>Keyword</td><td>What it sends</td><td>Where it leads</td></tr>
+    ${MKT_KEYWORDS.map(([k, w, l]) => `<tr><td><b>${k}</b></td><td>${w}</td><td class="sub">${l}</td></tr>`).join('')}</table></div>
+    <div class="sub" style="margin-top:8px">These are suggestions. Set them up in Manychat once each one has something real behind it. Webinar link: ${esc(WEBINAR_LINK)}</div></div>
+
+  <div class="card" style="margin-bottom:16px"><h2>7. Clarity check <small>${done}/${MKT_CHECKS.length}</small></h2>
+    ${MKT_CHECKS.map((c, i) => `<label class="chk" style="font-weight:500;color:var(--text)"><input type="checkbox" data-mktchk="${i}" ${M.checks[i] ? 'checked' : ''}> ${c}</label>`).join('')}
+    <div class="sub" style="margin:12px 0 6px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:11px">What do men actually think Soul Ark is?</div>
+    <div class="sub" style="margin-bottom:8px">Ask 3 men: “what do you think Soul Ark is?” Write their answer word for word. The gap between this and your sentence is your marketing.</div>
+    <form data-form="mktsaid" class="inline" style="flex-wrap:wrap;gap:8px;margin-bottom:8px"><input name="who" placeholder="Who" style="flex:1;min-width:110px;max-width:170px"><input name="said" placeholder="What they said…" required style="flex:3;min-width:220px"><button class="btn sm">Add</button></form>
+    ${M.said.map(x => `<div class="row"><div class="grow"><b>${esc(x.who || 'Someone')}</b> <span class="sub">${fdate(x.date)}</span><div class="iq" style="margin:4px 0 0">${esc(x.said)}</div></div><button class="x" data-act="mktSaidDel" data-id="${x.id}" aria-label="Delete">×</button></div>`).join('') || '<div class="empty">Nothing logged yet.</div>'}</div>`;
+}
+
 /* outreach trial: how each account's DMs are doing. Before the split date every DM came from the personal account. */
 const dmsOn = (d, acct) => { const v = S.daily[d] || {}, split = S.settings.acctSplit || '2026-11-12';
   if (d < split) return acct === 'viking' ? (v.dms || 0) + (v.pdms || 0) : 0;
@@ -1872,6 +2000,10 @@ document.addEventListener('click', e => {
       try { localStorage.setItem(AI_KEY, v.trim()); } catch (e) { toast('Could not save the key in this browser'); break; } render(); toast('Key saved. Press Test connection to check it'); break; }
     case 'aiRemoveKey': try { localStorage.removeItem(AI_KEY); } catch (e) {} aiState = {}; render(); toast('Key removed'); break;
     case 'aiTest': { toast('Testing…'); claudeCall('Reply with the single word OK.', 'Test', 10).then(() => toast('Connected ✓ Claude is ready'), e => toast(e.message)); break; }
+    case 'mktEdit': mktEditing = mktEditing === el.dataset.k ? '' : el.dataset.k; render(); break;
+    case 'mktCopy': (navigator.clipboard?.writeText(mktGet(el.dataset.k)) || Promise.reject()).then(() => toast('Copied'), () => toast('Copy blocked by the browser')); break;
+    case 'mktBrief': (navigator.clipboard?.writeText(mktText()) || Promise.reject()).then(() => toast('Copied. Paste it to Claude to sharpen your marketing'), () => toast('Copy blocked by the browser')); break;
+    case 'mktSaidDel': S.mkt.said = S.mkt.said.filter(x => x.id !== id); save(); render(); break;
     case 'icpEdit': icpEditing = icpEditing === el.dataset.k ? '' : el.dataset.k; render(); break;
     case 'icpTag': icpTag = el.dataset.t; render(); break;
     case 'icpPersona': icpForm(); break;
@@ -1917,7 +2049,7 @@ document.addEventListener('click', e => {
     case 'scripts': modal('Message scripts <small style="color:var(--muted);font-weight:500">tap to copy</small>', TEMPLATES.map(([name], i) => `<div class="tmpl"><b>${name}</b><p>${esc(tmplShow(i))}</p><button class="btn sm ghost" data-act="copyTmpl" data-i="${i}">Copy</button></div>`).join('')); break;
     case 'copyTmpl': { const txt = tmplText(+el.dataset.i).replace(/\{name\}/g, '[name]').replace(/\{link\}/g, S.settings.bookLink || '[link]'); (navigator.clipboard?.writeText(txt) || Promise.reject()).then(() => toast(/\{name\}/.test(tmplText(+el.dataset.i)) ? 'Copied — swap [name] for theirs' : (/\{link\}/.test(tmplText(+el.dataset.i)) && !S.settings.bookLink ? 'Copied — add your booking link in Settings to fill [link]' : 'Copied')), () => toast('Copy blocked by browser — select the text instead')); break; }
     case 'clearSample': if (confirm('Delete all sample data and start with a blank dashboard? (Your goal, identity statement and non-negotiables are kept.)')) {
-      const n = blank(); n.settings = {...S.settings, sample:false}; n.identity = S.identity; n.mission = S.mission; n.themes = S.themes; n.scale = S.scale; n.icp = S.icp; n.tmplEdits = S.tmplEdits; n.nonneg = S.nonneg; n.schedule = S.schedule; S = n; save(); render(); toast('Fresh start. Add your first lead!'); } break;
+      const n = blank(); n.settings = {...S.settings, sample:false}; n.identity = S.identity; n.mission = S.mission; n.themes = S.themes; n.scale = S.scale; n.icp = S.icp; n.mkt = S.mkt; n.tmplEdits = S.tmplEdits; n.nonneg = S.nonneg; n.schedule = S.schedule; S = n; save(); render(); toast('Fresh start. Add your first lead!'); } break;
     case 'loadSample': if (confirm('Replace everything with sample data? (Your goal, identity statement and non-negotiables are kept.)')) { S = sampleData(S); save(); render(); } break;
     case 'wipe': if (confirm('Delete ALL your data? Export a backup first if you are unsure. This cannot be undone.')) { S = blank(); save(); render(); toast('Everything deleted'); } break;
     case 'export': {
@@ -1949,6 +2081,8 @@ document.addEventListener('submit', e => {
     }
   } else if (kind === 'icpidea') {
     S.icp.ideas.unshift({id:uid(), tag:f.tag, hook:f.hook.trim(), note:'', done:false}); save(); render(); toast('Idea added');
+  } else if (kind === 'mktsaid') {
+    S.mkt.said.unshift({id:uid(), who:(f.who || '').trim(), said:f.said.trim(), date:today()}); save(); render(); toast('Logged');
   } else if (kind === 'icp') {
     Object.assign(S.icp, {name:f.name.trim(), age:(f.age || '').trim(), tag:f.tag.trim(), chips:(f.chips || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean)}); save(); closeModal(); render();
   } else if (kind === 'scalenote') {
@@ -2086,6 +2220,7 @@ window.addEventListener('pagehide', save);
 window.addEventListener('storage', e => { if (e.key === KEY && e.newValue) { try { S = migrate(JSON.parse(e.newValue)); render(); } catch (x) {} } });
 
 document.addEventListener('change', e => {
+  if (e.target.dataset && e.target.dataset.mktchk !== undefined) { S.mkt.checks[e.target.dataset.mktchk] = e.target.checked; save(); render(); return; }
   const t = e.target; if (!t || (t.name !== 'offer' && t.name !== 'kind' && t.name !== 'freq')) return;
   const f = t.closest('form'); if (!f) return;
   const fire = el => el && el.dispatchEvent(new Event('input', {bubbles:true}));
@@ -2108,6 +2243,7 @@ document.addEventListener('change', e => {
 document.addEventListener('input', e => {   // Scale Notes boxes save as you type
   const d = e.target.dataset; if (!d) return;
   if (d.tmpl !== undefined) { S.tmplEdits[TEMPLATES[+d.tmpl][0]] = e.target.value; save(); }
+  else if (d.mkt) { mktSet(d.mkt, e.target.value); save(); }
   else if (d.icp) { S.icp.lists[d.icp] = e.target.value.split(/\r?\n/).map(x => x.trim()).filter(Boolean); save(); }
   else if (d.uq) { const [pp, kk] = d.uq.split(':'); const lw = S.scale.ladder[pp]; lw.uq[kk] = e.target.value; lw.understand = composeUnderstand(pp); const cc = document.getElementById('uqc-' + pp); if (cc) cc.textContent = uqCount(pp); save(); }
   else if (d.ufree) { const lw = S.scale.ladder[d.ufree]; lw.ufree = e.target.value; lw.understand = composeUnderstand(d.ufree); save(); }
