@@ -367,7 +367,8 @@ const ORDER = ['dm','replied','prospect','convo','booked','decide','won'];
 /* Chasing rule: a man who has only been DMed or has replied gets ONE follow-up, 3 days after. Then nothing. Prospect and beyond keep getting chased. */
 const EARLY = ['dm','replied'], EARLY_GAP = 3;
 const isEarly = l => EARLY.includes(l.stage);
-const capped = l => isEarly(l) && (l.chases || 0) >= 1;   // his one follow-up is used: stop chasing
+/* No reply to the DM = no follow-up at all. Once they reply they get ONE follow-up. From Prospect onwards, chasing continues. */
+const capped = l => l.stage === 'dm' || (l.stage === 'replied' && (l.chases || 0) >= 1);
 const OPEN = ['dm','replied','prospect','convo','booked','decide'];
 const stageLabel = id => STAGES.find(s => s.id === id)?.label || id;
 const prob = id => STAGES.find(s => s.id === id)?.p || 0;
@@ -634,9 +635,10 @@ function migrate(o) {
   s.leads.forEach(l => {   // one-time: early leads get one follow-up. Guess whether it was already used: contacted again after being added, and not just by moving stage
     if (l.chases !== undefined) return;
     const moved = (l.history || []).some((h, i) => i > 0 && h.date === l.lastContact);
-    l.chases = (EARLY.includes(l.stage) && l.lastContact && l.created && l.lastContact > l.created && !moved) ? 1 : 0;
-    if (EARLY.includes(l.stage) && l.chases >= 1) l.nextFollowUp = '';
+    l.chases = (l.stage === 'replied' && l.lastContact && l.created && l.lastContact > l.created && !moved) ? 1 : 0;
+    if (l.stage === 'replied' && l.chases >= 1) l.nextFollowUp = '';
   });
+  s.leads.forEach(l => { if (l.stage === 'dm') l.nextFollowUp = ''; });   // no reply, no follow-up
   s.tmplEdits = (o.tmplEdits && typeof o.tmplEdits === 'object') ? o.tmplEdits : {}; s.scale = normScale(o.scale); s.icp = normIcp(o.icp); s.mkt = normMkt(o.mkt); if (!Array.isArray(s.themes)) s.themes = [];
   if (s.settings.goalTitle === 'Hit £5K/month with the 6-week mentorship') s.settings.goalTitle = DEFAULT_SETTINGS.goalTitle; // goal is purchases, not £
   s.leads.forEach(l => { l.history = l.history || [{stage:l.stage, date:l.created || today()}]; l.created = l.created || l.history[0].date; });
@@ -1524,7 +1526,7 @@ const likeGuide_ = () => `<div class="card" style="margin-bottom:14px;background
 function vPipeline() {
   const open = openLeads();
   const chase = open.filter(l => chaseLevel(l) === 'due'), tmrw = open.filter(l => chaseLevel(l) === 'soon');
-  const bar2 = chase.length ? `<div class="chase-bar">🔴 ${chase.length} ${chase.length === 1 ? 'person needs' : 'people need'} chasing now · ${gbp(sum(chase, 'value'))} waiting on you<span class="sub" style="font-weight:500">Red cards are at the top of each column. Hit <b>Chased</b> after you message them. New and Replied leads get ONE follow-up after ${EARLY_GAP} days, then stop. Prospect and beyond come back every ${S.settings.gap} days.</span></div>`
+  const bar2 = chase.length ? `<div class="chase-bar">🔴 ${chase.length} ${chase.length === 1 ? 'person needs' : 'people need'} chasing now · ${gbp(sum(chase, 'value'))} waiting on you<span class="sub" style="font-weight:500">Red cards are at the top of each column. Hit <b>Chased</b> after you message them. No reply to your DM means no follow-up. Once they reply they get ONE follow-up after ${EARLY_GAP} days, then stop. Prospect and beyond come back every ${S.settings.gap} days.</span></div>`
     : `<div class="chase-bar ok">✓ Nobody needs chasing right now${tmrw.length ? ` · ${tmrw.length} due tomorrow` : ''}</div>`;
   const cols = STAGES.map(s => {
     let ls = S.leads.filter(l => l.stage === s.id && leadMatches(l));
@@ -1545,10 +1547,10 @@ function card(l) {
   return `<div class="lcard ${chaseLevel(l)}" draggable="true" data-lead="${l.id}" data-act="editLead" data-id="${l.id}">
     <div class="t"><b>${esc(l.name)}</b>${l.value || !isOpen ? `<span class="val">${gbp(l.value)}</span>` : '<span class="sub" style="white-space:nowrap">just a DM</span>'}</div>
     <div class="sub">${esc(l.handle || '')}${l.handle ? ' · ' : ''}${esc(l.source)}${l.offer ? ' · ' + esc(offerName(l.offer)) : ''}</div>
-    <div class="m">${isOpen && capped(l) ? `<span class="chip" title="Early leads get one follow-up. Move them to Prospect to keep chasing.">✓ followed up · no more chasing</span>` : isOpen ? `<span class="chip ${sl >= S.settings.staleDays ? 'bad' : ''}">${sl === 0 ? 'contacted today' : sl + 'd silent'}</span>` : ''}
+    <div class="m">${isOpen && capped(l) ? `<span class="chip" title="${l.stage === 'dm' ? 'No reply yet, so no follow-up. Move them to Replied if they answer.' : 'They had their one follow-up. Move them to Prospect to keep chasing.'}">${l.stage === 'dm' ? 'no reply · no follow-up' : '✓ followed up · no more chasing'}</span>` : isOpen ? `<span class="chip ${sl >= S.settings.staleDays ? 'bad' : ''}">${sl === 0 ? 'contacted today' : sl + 'd silent'}</span>` : ''}
       ${l.nextFollowUp && isOpen && !capped(l) ? `<span class="chip ${l.nextFollowUp < today() ? 'bad' : l.nextFollowUp === today() ? 'bad' : l.nextFollowUp === addDays(today(), 1) ? 'warn' : ''}">${l.nextFollowUp <= today() ? '🔴 follow up ' : 'follow up '}${rel(l.nextFollowUp)}</span>` : (isOpen && isStuck(l) ? '<span class="chip bad">🔴 no follow-up date</span>' : '')}
       ${l.stage === 'lost' && l.lostReason ? `<span class="chip bad">${esc(l.lostReason)}</span>` : ''}</div>
-    ${isOpen ? `<div class="a"><button data-act="step" data-id="${l.id}" data-dir="-1" aria-label="Back a stage">‹</button>${capped(l) ? `<button class="ch" disabled title="One follow-up used. Move to Prospect to keep chasing." style="opacity:.5;cursor:default">Chased ✓</button>` : `<button class="ch ${chaseLevel(l) ? 'go' : ''}" data-act="chased" data-id="${l.id}">Chased</button>`}<button data-act="step" data-id="${l.id}" data-dir="1" aria-label="Forward a stage">›</button></div>` : ''}</div>`;
+    ${isOpen ? `<div class="a"><button data-act="step" data-id="${l.id}" data-dir="-1" aria-label="Back a stage">‹</button>${capped(l) ? `<button class="ch" disabled title="${l.stage === 'dm' ? 'No reply, no follow-up. Move to Replied if they answer.' : 'One follow-up used. Move to Prospect to keep chasing.'}" style="opacity:.5;cursor:default">${l.stage === 'dm' ? 'No chase' : 'Chased ✓'}</button>` : `<button class="ch ${chaseLevel(l) ? 'go' : ''}" data-act="chased" data-id="${l.id}">Chased</button>`}<button data-act="step" data-id="${l.id}" data-dir="1" aria-label="Forward a stage">›</button></div>` : ''}</div>`;
 }
 
 /* ---------- CLIENTS ---------- */
@@ -1813,7 +1815,7 @@ function snapsHtml() {
 
 /* ================= modals ================= */
 function leadForm(id) {
-  const l = id ? S.leads.find(x => x.id === id) : {name:'', handle:'', source:SOURCES[0], stage:'dm', offer:'', value:0, lastContact:today(), nextFollowUp:noSun(addDays(today(), EARLY_GAP)), notes:''};
+  const l = id ? S.leads.find(x => x.id === id) : {name:'', handle:'', source:SOURCES[0], stage:'dm', offer:'', value:0, lastContact:today(), nextFollowUp:'', notes:''};
   modal(id ? 'Edit lead' : 'New lead', `<form data-form="lead" data-id="${id || ''}">
     <div class="two">${fld('Name', 'name', l.name, 'text', 'required')}${fld('Instagram / handle', 'handle', l.handle)}</div>
     <div class="two">${sel('Source', 'source', SOURCES, l.source)}${sel('Stage', 'stage', STAGES.map(s => [s.id, s.label]), l.stage)}</div>
@@ -1922,8 +1924,11 @@ function incomeForm(id) {
 /* ================= actions ================= */
 function applyStage(l, stage) {
   const t = today();
+  const was = l.stage;
   l.stage = stage; l.history.push({stage, date:t}); l.lastContact = t;
-  if (OPEN.includes(stage) && !l.nextFollowUp && !(EARLY.includes(stage) && (l.chases || 0) >= 1)) l.nextFollowUp = noSun(addDays(t, EARLY.includes(stage) ? EARLY_GAP : S.settings.gap));
+  if (stage === 'dm') { l.nextFollowUp = ''; return; }   // no reply, no follow-up
+  if (stage === 'replied' && was === 'dm') { l.chases = 0; l.nextFollowUp = noSun(addDays(t, EARLY_GAP)); return; }   // they answered: one follow-up, 3 days from now
+  if (OPEN.includes(stage) && !l.nextFollowUp && !(stage === 'replied' && (l.chases || 0) >= 1)) l.nextFollowUp = noSun(addDays(t, stage === 'replied' ? EARLY_GAP : S.settings.gap));
 }
 function moveLead(id, stage, ask = true) {
   const l = S.leads.find(x => x.id === id); if (!l || l.stage === stage) return;
@@ -1955,9 +1960,9 @@ document.addEventListener('click', e => {
     case 'editClient': clientForm(id); break;
     case 'newPayment': payForm(); break;
     case 'chased': { const l = S.leads.find(x => x.id === id); l.lastContact = today(); l.chases = (l.chases || 0) + 1;
-      if (isEarly(l)) { l.nextFollowUp = ''; save(); render(); toast(`Logged. That was ${l.name}'s one follow-up. No more chasing unless they reply and you move them to Prospect.`); }
+      if (l.stage === 'replied') { l.nextFollowUp = ''; save(); render(); toast(`Logged. That was ${l.name}'s one follow-up. No more chasing unless you move them to Prospect.`); }
       else { l.nextFollowUp = noSun(addDays(today(), S.settings.gap)); save(); render(); toast(`Logged. Next follow-up with ${l.name}: ${fdate(l.nextFollowUp)}`); } break; }
-    case 'snooze': { const l = S.leads.find(x => x.id === id); if (capped(l)) { toast('They already had their one follow-up'); break; } l.nextFollowUp = noSun(addDays(today(), +el.dataset.n)); save(); render(); toast('Snoozed'); break; }
+    case 'snooze': { const l = S.leads.find(x => x.id === id); if (capped(l)) { toast(l.stage === 'dm' ? 'No reply, no follow-up' : 'They already had their one follow-up'); break; } l.nextFollowUp = noSun(addDays(today(), +el.dataset.n)); save(); render(); toast('Snoozed'); break; }
     case 'step': { const l = S.leads.find(x => x.id === id); const i = OPEN.indexOf(l.stage) + +el.dataset.dir; if (i < 0) return; moveLead(id, i >= OPEN.length ? 'won' : OPEN[i]); break; }
     case 'delLead': if (confirm('Delete this lead permanently?')) { S.leads = S.leads.filter(x => x.id !== id); save(); closeModal(); render(); } break;
     case 'delClient': if (confirm('Delete this client? Their payments stay in your revenue.')) { S.clients = S.clients.filter(x => x.id !== id); S.payments.forEach(p => { if (p.clientId === id) p.clientId = ''; }); save(); closeModal(); render(); } break;
@@ -2085,10 +2090,11 @@ document.addEventListener('submit', e => {
     if (id) {
       const l = S.leads.find(x => x.id === id), newStage = f.stage;
       Object.assign(l, {name:f.name.trim(), handle:f.handle.trim(), source:f.source, offer:f.offer || '', value:+f.value || 0, lastContact:f.lastContact, nextFollowUp:f.nextFollowUp, notes:f.notes});
+      if (l.stage === 'dm') l.nextFollowUp = '';
       save(); closeModal();
       if (newStage !== l.stage) moveLead(id, newStage, false); else render();
     } else {
-      S.leads.push({id:uid(), name:f.name.trim(), handle:f.handle.trim(), source:f.source, stage:f.stage, offer:f.offer || '', value:+f.value || 0, lastContact:f.lastContact || t, nextFollowUp:f.nextFollowUp, notes:f.notes, created:t, history:[{stage:f.stage, date:t}]});
+      S.leads.push({id:uid(), name:f.name.trim(), handle:f.handle.trim(), source:f.source, stage:f.stage, offer:f.offer || '', value:+f.value || 0, lastContact:f.lastContact || t, nextFollowUp:f.stage === 'dm' ? '' : (f.nextFollowUp || noSun(addDays(t, f.stage === 'replied' ? EARLY_GAP : S.settings.gap))), notes:f.notes, created:t, history:[{stage:f.stage, date:t}]});
       const dmNote = countDm(f.source); save(); closeModal(); render(); toast('Lead added' + dmNote);
     }
   } else if (kind === 'icpidea') {
@@ -2113,7 +2119,7 @@ document.addEventListener('submit', e => {
     save(); render(); toast('Logged');
     const q = document.querySelector('form[data-form=theme] input[name=pain]'); if (q) q.focus();
   } else if (kind === 'quicklead') {
-    const raw = f.name.trim(), next = noSun(addDays(t, EARLY_GAP));
+    const raw = f.name.trim(), next = '';   // a new DM has no follow-up date: only people who reply get one
     S.leads.push({id:uid(), name:raw, handle:raw.startsWith('@') ? raw : '', source:f.source, stage:'dm', offer:'', value:0, lastContact:t, nextFollowUp:next, notes:'', created:t, history:[{stage:'dm', date:t}]});
     const dmNote = countDm(f.source); save(); render(); toast(`Added ${raw}${dmNote}. First follow-up ${fdate(next)}`);
     const q = document.querySelector('form[data-form=quicklead] input[name=name]'); if (q) q.focus();
